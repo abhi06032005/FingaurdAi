@@ -1,34 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Show, UserButton, useUser } from '@clerk/nextjs';
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function Navbar() {
-  const router = useRouter();
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    router.push("/");
-    router.refresh();
-    // Force direct reload to clear contexts
-    window.location.href = "/";
-  };
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.role === "ADMIN";
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -63,7 +42,7 @@ export function Navbar() {
           <Link href="/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
             Dashboard
           </Link>
-          {user?.role === "ADMIN" && (
+          {isAdmin && (
             <Link href="/admin" className="transition-colors hover:text-primary text-primary font-semibold">
               Admin Panel
             </Link>
@@ -72,27 +51,20 @@ export function Navbar() {
 
         {/* Auth Buttons */}
         <div className="flex items-center space-x-4">
-          {user ? (
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
-                Hello, <strong className="text-foreground">{user.name}</strong>
-              </span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Logout
+          <ThemeToggle />
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+          <Show when="signed-out">
+            <Link href="/sign-in">
+              <Button variant="ghost" className="hidden sm:inline-flex">
+                Login
               </Button>
-            </div>
-          ) : (
-            <>
-              <Link href="/login">
-                <Button variant="ghost" className="hidden sm:inline-flex">
-                  Login
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button>Register</Button>
-              </Link>
-            </>
-          )}
+            </Link>
+            <Link href="/sign-up">
+              <Button>Register</Button>
+            </Link>
+          </Show>
         </div>
       </div>
     </nav>

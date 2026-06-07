@@ -44,11 +44,22 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
     if (!data || data.length === 0) return null;
     const periods = getPeriodKeys(data[0]);
 
+    let subtitle = "Consolidated Figures in Rs. Crores";
+    if (title === "Ratios") {
+      subtitle = "";
+    } else if (title === "Shareholding Pattern") {
+      subtitle = "Numbers in percentages";
+    }
+
     return (
       <section className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-8 shadow-sm">
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
-          <span className="text-xs text-slate-500 font-medium tracking-wide uppercase hidden sm:block">Consolidated Figures in Rs. Crores</span>
+          {subtitle && (
+            <span className="text-xs text-slate-500 font-medium tracking-wide uppercase hidden sm:block">
+              {subtitle}
+            </span>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -61,24 +72,55 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {data.map((row, i) => (
-                <tr key={i} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-3 font-medium text-slate-700 bg-white group-hover:bg-slate-50/80 sticky left-0 z-10 whitespace-nowrap border-r border-slate-100/50">
-                    {row.Metric || row['']}
-                  </td>
-                  {periods.map(p => {
-                    const val = row[p];
-                    const isNegative = typeof val === 'number' && val < 0;
-                    return (
-                      <td key={p} className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
-                        <span className={isNegative ? "text-red-600" : "text-slate-800"}>
-                          {val === null ? "" : (typeof val === 'number' ? val.toLocaleString('en-IN') : val)}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {data.map((row, i) => {
+                const rowLabel = row.Metric || row[''] || '';
+                return (
+                  <tr key={i} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-3 font-medium text-slate-700 bg-white group-hover:bg-slate-50/80 sticky left-0 z-10 whitespace-nowrap border-r border-slate-100/50">
+                      {rowLabel}
+                    </td>
+                    {periods.map(p => {
+                      const val = row[p];
+                      const isNegative = typeof val === 'number' && val < 0;
+
+                      let displayVal = "";
+                      if (val !== null && val !== undefined && val !== "") {
+                        if (typeof val === 'number') {
+                          const rowLabelLower = rowLabel.toLowerCase();
+                          if (title === "Shareholding Pattern") {
+                            if (rowLabelLower.includes("shareholders")) {
+                              displayVal = val.toLocaleString('en-IN');
+                            } else {
+                              displayVal = `${val.toFixed(2)}%`;
+                            }
+                          } else if (rowLabel.includes("%")) {
+                            displayVal = `${val}%`;
+                          } else {
+                            if (Number.isInteger(val)) {
+                              displayVal = val.toLocaleString('en-IN');
+                            } else {
+                              displayVal = val.toLocaleString('en-IN', {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 2
+                              });
+                            }
+                          }
+                        } else {
+                          displayVal = val.toString();
+                        }
+                      }
+
+                      return (
+                        <td key={p} className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+                          <span className={isNegative ? "text-red-600" : "text-slate-800"}>
+                            {displayVal}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -111,17 +153,41 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
     );
   };
 
-  // Mock top header stats since tsc_data.json doesn't have a direct top-level ratios object for TCS
+  // Extract latest ROCE from ratios table
+  const roceRow = stockData.ratios?.find((r: any) => (r.Metric || r['']) === 'ROCE %');
+  let roceValue = "N/A";
+  if (roceRow) {
+    const periods = Object.keys(roceRow).filter(k => k !== 'Metric' && k !== '' && k !== '_id');
+    const latestPeriod = periods[periods.length - 1];
+    if (latestPeriod && roceRow[latestPeriod] !== null) {
+      roceValue = typeof roceRow[latestPeriod] === 'number' 
+        ? roceRow[latestPeriod].toFixed(1) 
+        : roceRow[latestPeriod].toString();
+    }
+  }
+
+  // Extract latest ROE from CAGR Return on Equity
+  const roeData = stockData.profit_and_loss?.["Return on Equity"];
+  let roeValue = "N/A";
+  if (roeData && Array.isArray(roeData)) {
+    const lastYearRow = roeData.find((r: any) => Object.keys(r)[0]?.toLowerCase().includes('last year'));
+    if (lastYearRow) {
+      const key = Object.keys(lastYearRow)[0];
+      const val = lastYearRow[key];
+      roeValue = typeof val === 'number' ? val.toFixed(1) : (val?.toString() || "N/A");
+    }
+  }
+
   const topStats = [
-    { label: "Market Cap", value: "₹ 15,23,456", suffix: "Cr." },
-    { label: "Current Price", value: "₹ 4,120", suffix: "" },
-    { label: "High / Low", value: "₹ 4,254 / 3,156", suffix: "" },
-    { label: "Stock P/E", value: "30.5", suffix: "" },
-    { label: "Book Value", value: "₹ 295", suffix: "" },
-    { label: "Dividend Yield", value: "1.75", suffix: "%" },
-    { label: "ROCE", value: "63.0", suffix: "%" },
-    { label: "ROE", value: "52.0", suffix: "%" },
-    { label: "Face Value", value: "₹ 1.00", suffix: "" },
+    { label: "Market Cap", value: "N/A", suffix: "" },
+    { label: "Current Price", value: "N/A", suffix: "" },
+    { label: "High / Low", value: "N/A", suffix: "" },
+    { label: "Stock P/E", value: "N/A", suffix: "" },
+    { label: "Book Value", value: "N/A", suffix: "" },
+    { label: "Dividend Yield", value: "N/A", suffix: "" },
+    { label: "ROCE", value: roceValue, suffix: roceValue !== "N/A" ? "%" : "" },
+    { label: "ROE", value: roeValue, suffix: roeValue !== "N/A" ? "%" : "" },
+    { label: "Face Value", value: "N/A", suffix: "" },
   ];
 
   return (

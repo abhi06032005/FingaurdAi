@@ -304,20 +304,16 @@ export default function StockAnalyzer() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const ticker = search.trim().toUpperCase();
-    if (ticker === "TCS") {
+    if (ticker) {
       router.push(`/stock/${ticker}`);
-      return;
     }
-    performSearch(ticker);
   };
 
   const handleBadgeClick = (ticker: string) => {
     setSearch(ticker);
-    if (ticker === "TCS") {
+    if (ticker) {
       router.push(`/stock/${ticker}`);
-      return;
     }
-    performSearch(ticker);
   };
 
   const fmtCurrency = (val: number | null) => {
