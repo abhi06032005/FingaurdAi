@@ -30,6 +30,12 @@ export function Navbar() {
           <Link href="/scanner" className="transition-colors hover:text-foreground/80 text-foreground/60">
             Scam Scanner
           </Link>
+          <Link href="/scams" className="transition-colors hover:text-foreground/80 text-foreground/60">
+            Scam Awareness
+          </Link>
+          <Link href="/trading-journal" className="transition-colors hover:text-foreground/80 text-foreground/60">
+            Trading Journal
+          </Link>
           <Link href="/learn" className="transition-colors hover:text-foreground/80 text-foreground/60">
             Learn
           </Link>
@@ -42,11 +48,9 @@ export function Navbar() {
           <Link href="/dashboard" className="transition-colors hover:text-foreground/80 text-foreground/60">
             Dashboard
           </Link>
-          {isAdmin && (
-            <Link href="/admin" className="transition-colors hover:text-primary text-primary font-semibold">
-              Admin Panel
-            </Link>
-          )}
+          <Link href="/admin" className="transition-colors hover:text-primary text-primary font-semibold">
+            Admin Panel
+          </Link>
         </div>
 
         {/* Auth Buttons */}
