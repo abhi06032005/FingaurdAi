@@ -50,4 +50,26 @@ router.post("/", async (req, res) => {
         return res.status(500).json({ error: "Failed to save trade to database", details: error.message });
     }
 });
+// Fetch all trades for a user
+router.get("/", async (req, res) => {
+    const userId = req.query.userId;
+    if (!userId) {
+        return res.status(400).json({ error: "Missing Clerk userId in query parameters" });
+    }
+    try {
+        const trades = await prisma_1.default.trade.findMany({
+            where: {
+                userId,
+            },
+            orderBy: {
+                entryDate: "desc",
+            },
+        });
+        return res.status(200).json({ success: true, data: trades });
+    }
+    catch (error) {
+        console.error("[Trades] Failed to fetch trades:", error);
+        return res.status(500).json({ error: "Failed to fetch trades from database", details: error.message });
+    }
+});
 exports.default = router;

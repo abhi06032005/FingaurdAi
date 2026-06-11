@@ -39,7 +39,7 @@ export default function RootLayout({
         <body className={`${inter.variable} font-sans antialiased min-h-screen flex flex-col`}>
           <QueryProvider>
             <Navbar />
-            <main className="flex-1 bg-background">
+            <main className="flex-1 bg-transparent">
               {children}
             </main>
             <Footer />

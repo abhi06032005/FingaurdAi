@@ -20,65 +20,70 @@ export default function AssistantPage() {
     setInput("");
 
     setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
+      setMessages(prev => [...prev, {
+        role: "assistant",
         content: "I'm a mock AI for now! Once connected to the backend, I'll explain concepts, build personalized roadmaps, and decode complex financial jargon for you."
       }]);
     }, 1000);
   };
 
   return (
-    <div className="container mx-auto py-10 px-4 flex flex-col h-[calc(100vh-4rem)] max-w-4xl">
-      <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold mb-2">AI Learning Assistant</h1>
-        <p className="text-muted-foreground">Ask questions, request roadmaps, and learn at your own pace.</p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto mb-6 space-y-4 pr-2">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex items-start gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-            <div className={`p-2 rounded-full flex-shrink-0 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-              {msg.role === "user" ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-            </div>
-            <div className={`p-4 rounded-lg max-w-[80%] ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-              {msg.content}
-            </div>
+    <div className="fg-shell flex h-[calc(100vh-4rem)] flex-col px-4 py-8">
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col">
+        <div className="mb-6 text-center">
+          <div aria-hidden className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+            <Bot className="h-6 w-6" />
           </div>
-        ))}
-        
-        {messages.length === 1 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 px-12">
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setInput("Create a roadmap for a complete beginner with ₹10,000 to invest.")}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center text-primary"><MapPin className="w-4 h-4 mr-2" /> Beginner Roadmap</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                Step-by-step guide to starting your investment journey safely.
-              </CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setInput("Explain the difference between Nifty 50 and Sensex.")}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center text-primary"><Bot className="w-4 h-4 mr-2" /> Concept Explanation</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                Simplify complex jargon into easy-to-understand language.
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
+          <h1 className="fg-title mb-2 text-3xl md:text-5xl">AI Learning Assistant</h1>
+          <p className="text-muted-foreground">Ask questions, request roadmaps, and learn at your own pace.</p>
+        </div>
 
-      <form onSubmit={handleSend} className="flex gap-2 bg-background pt-4 border-t">
-        <Input 
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your question..." 
-          className="flex-1"
-        />
-        <Button type="submit">
-          <Send className="w-4 h-4" />
-        </Button>
-      </form>
+        <div className="mb-6 flex-1 space-y-4 overflow-y-auto rounded-lg border border-border/70 bg-card/40 p-4 pr-2 shadow-inner backdrop-blur-md">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`flex items-start gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              <div className={`flex-shrink-0 rounded-lg p-2 ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                {msg.role === "user" ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+              </div>
+              <div className={`max-w-[80%] rounded-lg border p-4 shadow-sm ${msg.role === "user" ? "border-primary/30 bg-primary text-primary-foreground" : "border-border/70 bg-background/70 text-foreground"}`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+
+          {messages.length === 1 && (
+            <div className="mt-8 grid grid-cols-1 gap-4 px-0 sm:grid-cols-2 sm:px-12">
+              <Card className="cursor-pointer transition-all hover:-translate-y-1 hover:border-primary/35" onClick={() => setInput("Create a roadmap for a complete beginner with â‚¹10,000 to invest.")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center text-primary"><MapPin className="w-4 h-4 mr-2" /> Beginner Roadmap</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  Step-by-step guide to starting your investment journey safely.
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer transition-all hover:-translate-y-1 hover:border-primary/35" onClick={() => setInput("Explain the difference between Nifty 50 and Sensex.")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center text-primary"><Bot className="w-4 h-4 mr-2" /> Concept Explanation</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  Simplify complex jargon into easy-to-understand language.
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSend} className="flex gap-2 rounded-lg border border-border/70 bg-card/70 p-2 shadow-xl backdrop-blur-md">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your question..."
+            className="flex-1"
+          />
+          <Button type="submit">
+            <Send className="w-4 h-4" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

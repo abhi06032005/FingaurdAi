@@ -18,20 +18,23 @@ export default function InfluencersPage() {
   const filtered = filter === "All" ? INFLUENCERS : INFLUENCERS.filter(i => i.platform === filter);
 
   return (
-    <div className="container mx-auto py-10 px-4 min-h-[calc(100vh-4rem)]">
-      <div className="max-w-3xl mx-auto mb-10 text-center">
-        <h1 className="text-3xl font-bold mb-4">Finfluencer Directory</h1>
+    <div className="fg-shell min-h-[calc(100vh-4rem)] px-4 py-10">
+      <div className="mx-auto mb-10 max-w-3xl text-center">
+        <div aria-hidden className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+          <Star className="h-6 w-6" />
+        </div>
+        <h1 className="fg-title mb-4 text-3xl md:text-5xl">Finfluencer Directory</h1>
         <p className="text-muted-foreground">
           Community-driven reviews and ratings for popular financial influencers.
         </p>
       </div>
 
-      <div className="flex justify-center space-x-2 mb-8">
+      <div className="mb-8 flex justify-center gap-2">
         {["All", "YouTube", "Twitter", "Instagram"].map(p => (
           <Badge 
             key={p} 
             variant={filter === p ? "default" : "outline"}
-            className="cursor-pointer text-sm py-1 px-4"
+            className="h-8 cursor-pointer px-4 text-sm"
             onClick={() => setFilter(p)}
           >
             {p}
@@ -39,11 +42,11 @@ export default function InfluencersPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map(influencer => (
-          <Card key={influencer.id} className="flex flex-col">
+          <Card key={influencer.id} className="flex flex-col transition-all hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl">
             <CardHeader className="flex flex-row items-center gap-4">
-              <Avatar className="h-14 w-14">
+              <Avatar className="h-14 w-14 ring-2 ring-primary/20">
                 <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${influencer.name}`} alt={influencer.name} />
                 <AvatarFallback>{influencer.name.substring(0, 2)}</AvatarFallback>
               </Avatar>

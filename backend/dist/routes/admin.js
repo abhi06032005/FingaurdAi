@@ -104,4 +104,73 @@ router.post('/annual-report/scrape', async (req, res) => {
         }
     })();
 });
+// Admin Authentication endpoint
+router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    const adminUsername = 'abhijeet06032005';
+    const adminPassword = '@bhijeet';
+    if (username === adminUsername && password === adminPassword) {
+        return res.status(200).json({ success: true, token: 'finguard_admin_authenticated' });
+    }
+    return res.status(401).json({ success: false, error: 'Invalid admin credentials' });
+});
+// Mock companies-status for stock dashboard
+router.get('/companies-status', async (req, res) => {
+    const mockTickers = [
+        { ticker: 'RELIANCE', status: 'Completed', lastUpdated: new Date(Date.now() - 3600000 * 24).toISOString() },
+        { ticker: 'TCS', status: 'Completed', lastUpdated: new Date(Date.now() - 3600000 * 12).toISOString() },
+        { ticker: 'INFY', status: 'Completed', lastUpdated: new Date(Date.now() - 3600000 * 48).toISOString() },
+        { ticker: 'HDFCBANK', status: 'Completed', lastUpdated: new Date(Date.now() - 3600000 * 2).toISOString() },
+        { ticker: 'ICICIBANK', status: 'Pending', lastUpdated: null },
+        { ticker: 'BHARTIARTL', status: 'Pending', lastUpdated: null },
+        { ticker: 'ITC', status: 'Failed', lastUpdated: null },
+        { ticker: 'SBIN', status: 'Pending', lastUpdated: null },
+        { ticker: 'LTI', status: 'Pending', lastUpdated: null },
+        { ticker: 'HINDUNILVR', status: 'Pending', lastUpdated: null }
+    ];
+    return res.status(200).json(mockTickers);
+});
+// Mock scrape-status for stock dashboard
+let bulkScrapingActive = false;
+let bulkProgress = {
+    total: 10,
+    current: 0,
+    ticker: '',
+    completed: [],
+    failed: []
+};
+router.get('/scrape-status', async (req, res) => {
+    if (bulkScrapingActive && bulkProgress.current < bulkProgress.total) {
+        // Simulate background progress
+        bulkProgress.current += 1;
+        const pendingTickers = ['ICICIBANK', 'BHARTIARTL', 'SBIN', 'LTI', 'HINDUNILVR'];
+        const nextTicker = pendingTickers[bulkProgress.current - 1] || 'DONE';
+        bulkProgress.ticker = nextTicker;
+        if (nextTicker !== 'DONE') {
+            bulkProgress.completed.push(nextTicker);
+        }
+        if (bulkProgress.current === bulkProgress.total) {
+            bulkScrapingActive = false;
+        }
+    }
+    return res.status(200).json({
+        isBulkScraping: bulkScrapingActive,
+        progress: bulkProgress
+    });
+});
+router.post('/scrape-bulk', async (req, res) => {
+    bulkScrapingActive = true;
+    bulkProgress = {
+        total: 5,
+        current: 0,
+        ticker: 'ICICIBANK',
+        completed: [],
+        failed: []
+    };
+    return res.status(200).json({ success: true, total: 5 });
+});
+router.post('/scrape-stop', async (req, res) => {
+    bulkScrapingActive = false;
+    return res.status(200).json({ success: true });
+});
 exports.default = router;

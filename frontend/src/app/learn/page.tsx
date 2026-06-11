@@ -21,12 +21,12 @@ const ARTICLES = {
 
 export default function LearnPage() {
   const renderArticles = (articles: typeof ARTICLES.beginner) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+    <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {articles.map(article => (
         <Link href={`/learn/${article.id}`} key={article.id}>
-          <Card className="hover:shadow-md transition-shadow h-full cursor-pointer">
-            <div className="h-32 bg-muted rounded-t-lg flex items-center justify-center border-b">
-              <BookOpen className="text-muted-foreground w-8 h-8 opacity-50" />
+          <Card className="h-full cursor-pointer transition-all hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl">
+            <div className="flex h-36 items-center justify-center border-b border-border/70 bg-gradient-to-br from-primary/10 via-background/40 to-accent/10">
+              <BookOpen className="w-9 h-9 text-primary" />
             </div>
             <CardHeader>
               <CardTitle className="text-lg line-clamp-2">{article.title}</CardTitle>
@@ -48,19 +48,22 @@ export default function LearnPage() {
   );
 
   return (
-    <div className="container mx-auto py-10 px-4 min-h-[calc(100vh-4rem)]">
-      <div className="max-w-3xl mx-auto mb-10 text-center">
-        <h1 className="text-3xl font-bold mb-4">Financial Library</h1>
+    <div className="fg-shell min-h-[calc(100vh-4rem)] px-4 py-10">
+      <div className="mx-auto mb-10 max-w-3xl text-center">
+        <div aria-hidden className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+          <BookOpen className="h-6 w-6" />
+        </div>
+        <h1 className="fg-title mb-4 text-3xl md:text-5xl">Financial Library</h1>
         <p className="text-muted-foreground">
           Master the art of investing with our curated guides and tutorials.
         </p>
       </div>
 
-      <Tabs defaultValue="beginner" className="w-full max-w-5xl mx-auto">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="beginner">Beginner</TabsTrigger>
-          <TabsTrigger value="intermediate">Intermediate</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+      <Tabs defaultValue="beginner" className="mx-auto w-full max-w-5xl">
+        <TabsList className="mb-8 grid h-auto w-full grid-cols-3 gap-1">
+          <TabsTrigger value="beginner" className="py-2.5">Beginner</TabsTrigger>
+          <TabsTrigger value="intermediate" className="py-2.5">Intermediate</TabsTrigger>
+          <TabsTrigger value="advanced" className="py-2.5">Advanced</TabsTrigger>
         </TabsList>
         
         <TabsContent value="beginner">{renderArticles(ARTICLES.beginner)}</TabsContent>

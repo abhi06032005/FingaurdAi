@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 
 export default function TradingJournalPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="fg-shell min-h-screen pb-20 text-foreground">
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border">
+        <header className="fg-panel flex flex-col items-start justify-between gap-4 rounded-lg p-6 sm:flex-row sm:items-center md:p-8">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
+            <h1 className="fg-title flex items-center gap-3 text-3xl md:text-4xl">
               <BookOpen className="h-8 w-8 text-primary" />
               Add New Trade
             </h1>

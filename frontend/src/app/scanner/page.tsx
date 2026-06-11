@@ -32,27 +32,30 @@ export default function ScamScanner() {
   };
 
   return (
-    <div className="container mx-auto py-10 px-4 min-h-[calc(100vh-4rem)]">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold mb-4">Scam Scanner</h1>
+    <div className="fg-shell min-h-[calc(100vh-4rem)] px-4 py-10">
+      <div className="mx-auto max-w-5xl">
+        <div className="mx-auto mb-10 max-w-3xl text-center">
+          <div aria-hidden className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+            <ShieldAlert className="h-6 w-6" />
+          </div>
+          <h1 className="fg-title mb-4 text-3xl md:text-5xl">Scam Scanner</h1>
           <p className="text-muted-foreground">
             Paste any suspicious Telegram message, WhatsApp forward, or stock tip below to check for red flags.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Input Section */}
           <Card className="h-fit">
             <CardHeader>
-              <CardTitle>Analyze Message</CardTitle>
+              <CardTitle className="text-xl">Analyze Message</CardTitle>
               <CardDescription>Our AI will cross-reference the text against thousands of known scam patterns.</CardDescription>
             </CardHeader>
             <form onSubmit={handleScan}>
               <CardContent>
                 <Textarea 
                   placeholder="e.g., Guaranteed 50% returns in 2 days! Join my VIP Telegram group now..."
-                  className="min-h-[250px] resize-none text-base"
+                  className="min-h-[280px] resize-none text-base leading-relaxed"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
@@ -75,22 +78,22 @@ export default function ScamScanner() {
           {/* Results Section */}
           <div className="space-y-6">
             {!result && !isScanning && (
-              <div className="h-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-8 text-muted-foreground text-center">
-                <ShieldAlert className="w-16 h-16 mb-4 opacity-20" />
+              <div className="fg-panel flex h-full min-h-[390px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
+                <ShieldAlert className="mb-4 h-16 w-16 opacity-25" />
                 <p>Paste a message and click scan to see the analysis.</p>
               </div>
             )}
 
             {isScanning && (
               <div className="space-y-4">
-                <div className="h-32 bg-muted animate-pulse rounded-xl"></div>
-                <div className="h-64 bg-muted animate-pulse rounded-xl"></div>
+                <div className="h-32 animate-pulse rounded-lg bg-muted/75"></div>
+                <div className="h-64 animate-pulse rounded-lg bg-muted/75"></div>
               </div>
             )}
 
             {result === 'SCAM' && !isScanning && (
               <>
-                <Card className="border-destructive shadow-sm">
+                <Card className="border-destructive/60 bg-destructive/5">
                   <CardContent className="pt-6 flex items-center">
                     <AlertOctagon className="w-12 h-12 text-destructive mr-6" />
                     <div>
@@ -101,7 +104,7 @@ export default function ScamScanner() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="bg-destructive/10 border-b">
+                  <CardHeader className="border-b border-destructive/20 bg-destructive/10">
                     <CardTitle className="text-destructive">High Risk Detected</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6 space-y-6">
@@ -114,12 +117,12 @@ export default function ScamScanner() {
                         </li>
                         <li className="flex items-start">
                           <Badge variant="destructive" className="mr-2 mt-0.5">Guarantee</Badge>
-                          <span className="text-sm text-muted-foreground">Promises of "guaranteed" returns violate SEBI regulations.</span>
+                          <span className="text-sm text-muted-foreground">Promises of &quot;guaranteed&quot; returns violate SEBI regulations.</span>
                         </li>
                       </ul>
                     </div>
-                    <div className="bg-muted p-4 rounded-md text-sm leading-relaxed">
-                      <strong>AI Explanation:</strong> This message closely matches the pattern of a classic "Pump and Dump" scheme often run through Telegram groups. Do not engage or invest money based on this tip.
+                    <div className="rounded-lg border border-border/70 bg-muted/60 p-4 text-sm leading-relaxed">
+                      <strong>AI Explanation:</strong> This message closely matches the pattern of a classic &quot;Pump and Dump&quot; scheme often run through Telegram groups. Do not engage or invest money based on this tip.
                     </div>
                   </CardContent>
                 </Card>
@@ -128,7 +131,7 @@ export default function ScamScanner() {
 
             {result === 'SAFE' && !isScanning && (
               <>
-                <Card className="border-success shadow-sm">
+                <Card className="border-success/60 bg-success/5">
                   <CardContent className="pt-6 flex items-center">
                     <CheckCircle className="w-12 h-12 text-success mr-6" />
                     <div>
@@ -146,7 +149,7 @@ export default function ScamScanner() {
             )}
 
             {result === 'WARNING' && !isScanning && (
-              <Card className="border-warning shadow-sm">
+              <Card className="border-warning/60 bg-warning/5">
                 <CardContent className="pt-6 flex items-center">
                   <ShieldAlert className="w-12 h-12 text-warning mr-6" />
                   <div>
