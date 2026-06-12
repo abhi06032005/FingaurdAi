@@ -19,7 +19,7 @@ router.post('/apify', express.json(), async (req: Request, res: Response): Promi
   try {
     const client = new ApifyClient({ token: APIFY_API_TOKEN });
     const formattedTicker = ticker.toUpperCase();
-    const url = `https://www.screener.in/company/${formattedTicker}/`;
+    const url = `https://www.screener.in/company/${formattedTicker}/consolidated/`;
 
     console.log(`[Webhook] Triggering Apify actor for ${formattedTicker} (${url})...`);
 
