@@ -1,772 +1,1412 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
-  Search,
-  Info,
-  TrendingUp,
-  AlertTriangle,
-  FileText,
-  Loader2,
-  Globe,
-  Building2,
-  DollarSign,
-  Briefcase,
-  Users,
-  ArrowUpRight,
+  Search, Loader2, AlertTriangle, TrendingUp, TrendingDown,
+  Shield, BarChart3, Building2, Leaf, Target, Eye,
+  ChevronRight, Minus, Star, AlertCircle, CheckCircle2,
+  Activity, Zap, Globe2, Brain
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { useRouter } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-interface StockResponse {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface AIReport {
   ticker: string;
-  lastUpdated: string;
-  report: string;
-  context: {
-    profile: {
-      companyName: string;
-      isin: string | null;
-      sector: string | null;
-      industry: string | null;
-      marketCap: number | null;
-      website: string | null;
-      description: string | null;
-      headquarters: string | null;
-      employees: number | null;
-      listingDate: string | null;
+  company_name: string;
+  generated_at: string;
+  data_sources: {
+    stock_data_available: boolean;
+    annual_reports_count: number;
+    fiscal_years_covered: string[];
+  };
+  executive_summary: {
+    company_overview: string;
+    one_liner: string;
+    investment_thesis: string;
+  };
+  financial_snapshot: {
+    revenue_trend: string;
+    profit_trend: string;
+    margin_analysis: string;
+    balance_sheet_health: string;
+    cash_flow_summary: string;
+    key_ratios: Array<{ name: string; value: string; benchmark: string; interpretation: string }>;
+    quarterly_highlights: string;
+  };
+  bull_bear_analysis: {
+    bull_case: Array<{ point: string; evidence: string; strength: "strong" | "moderate" | "speculative" }>;
+    bear_case: Array<{ point: string; evidence: string; severity: "high" | "medium" | "low" }>;
+    verdict: string;
+  };
+  business_quality_score: {
+    revenue_visibility: number;
+    management_quality: number;
+    competitive_moat: number;
+    balance_sheet_strength: number;
+    earnings_quality: number;
+    esg_practices: number;
+    overall_score: number;
+    score_rationale: string;
+  };
+  risk_matrix: {
+    risks: Array<{ name: string; category: string; probability: string; impact: string; mitigation: string }>;
+    overall_risk_level: "high" | "medium" | "low";
+  };
+  strategic_outlook: {
+    management_guidance: string;
+    capex_plans: string;
+    growth_catalysts: string[];
+    near_term_monitorables: string[];
+    long_term_vision: string;
+  };
+  industry_context: {
+    sector: string;
+    market_position: string;
+    peer_comparison: string;
+    industry_tailwinds: string[];
+    industry_headwinds: string[];
+    competitive_landscape: string;
+  };
+  esg_summary: {
+    environmental: string;
+    social: string;
+    governance: string;
+    csr_initiatives: string;
+    esg_rating_notes: string;
+  };
+  key_monitorables: string[];
+  disclaimer: string;
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const pct = (value / 10) * 100;
+  const color = value >= 7 ? "#22c55e" : value >= 5 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-400 font-medium">{label}</span>
+        <span className="font-extrabold" style={{ color }}>{value}/10</span>
+      </div>
+      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RiskBadge({ level }: { level: string }) {
+  const cfg: Record<string, { bg: string; text: string; label: string }> = {
+    high:   { bg: "bg-red-500/10 border-red-500/30",    text: "text-red-400",    label: "HIGH" },
+    medium: { bg: "bg-amber-500/10 border-amber-500/30", text: "text-amber-400",  label: "MED" },
+    low:    { bg: "bg-emerald-500/10 border-emerald-500/30", text: "text-emerald-400", label: "LOW" },
+  };
+  const c = cfg[level?.toLowerCase()] || cfg.low;
+  return (
+    <span className={`text-xs font-extrabold px-3 py-1 rounded-xl border ${c.bg} ${c.text} tracking-wider`}>
+      {c.label}
+    </span>
+  );
+}
+
+function StrengthDot({ s }: { s: string }) {
+  if (s === "strong") return <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_rgba(16,185,129,0.5)]" />;
+  if (s === "moderate") return <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_6px_rgba(245,158,11,0.5)]" />;
+  return <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block" />;
+}
+
+function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800/80">
+      <span className="text-indigo-400 w-5 h-5 flex items-center justify-center">{icon}</span>
+      <h3 className="text-base font-extrabold text-white tracking-wider uppercase">{title}</h3>
+    </div>
+  );
+}
+
+function InfoCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 md:p-8 transition-all hover:border-slate-700/50 shadow-xl ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main AI Report Renderer ──────────────────────────────────────────────────
+
+// Render helper to parse bold text **like this**
+function renderBoldText(str: string) {
+  const parts = str.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="text-white font-extrabold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+function FormattedText({ text, className = "" }: { text?: string; className?: string }) {
+  if (!text) return <p className="text-slate-400 text-sm italic">No commentary available.</p>;
+  
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  return (
+    <div className={`space-y-3.5 ${className}`}>
+      {lines.map((line, idx) => {
+        // Check for bullet indicators
+        if (line.startsWith('•') || line.startsWith('-') || line.startsWith('*')) {
+          const content = line.replace(/^[•\-\*]\s*/, '');
+          return (
+            <div key={idx} className="flex gap-2.5 text-sm text-slate-300 pl-1">
+              <span className="text-indigo-500 mt-2 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+              <span className="leading-relaxed">{renderBoldText(content)}</span>
+            </div>
+          );
+        }
+        
+        // Check for numbered list indicators
+        const numMatch = line.match(/^(\d+)\.\s*(.*)/);
+        if (numMatch) {
+          return (
+            <div key={idx} className="flex gap-2.5 text-sm text-slate-300 pl-1">
+              <span className="text-indigo-400 font-bold leading-relaxed">{numMatch[1]}.</span>
+              <span className="leading-relaxed">{renderBoldText(numMatch[2])}</span>
+            </div>
+          );
+        }
+
+        return (
+          <p key={idx} className="text-sm text-slate-300 leading-relaxed">
+            {renderBoldText(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Chart Data Parsers ──────────────────────────────────────────────────────
+
+interface FinancialDataPoint {
+  year: string;
+  sales: number;
+  profit: number;
+}
+
+function parseAnnualFinancials(stockData: any): FinancialDataPoint[] {
+  if (!stockData) return [];
+  const pnl = stockData.profit_and_loss;
+  let rows: any[] = [];
+  if (Array.isArray(pnl)) {
+    rows = pnl;
+  } else if (pnl && Array.isArray(pnl.annual_data)) {
+    rows = pnl.annual_data;
+  }
+  
+  if (rows.length === 0) return [];
+  
+  const salesRow = rows.find((r: any) => r.Metric === "Sales");
+  const profitRow = rows.find((r: any) => r.Metric === "Net Profit");
+  if (!salesRow) return [];
+  
+  const years = Object.keys(salesRow).filter(
+    (k) => k !== "Metric" && k !== "_id" && k !== "id" && k !== "__v"
+  );
+  
+  return years.map((yr) => {
+    const sVal = parseFloat(String(salesRow[yr] ?? 0).replace(/,/g, ""));
+    const pVal = profitRow ? parseFloat(String(profitRow[yr] ?? 0).replace(/,/g, "")) : 0;
+    return {
+      year: yr,
+      sales: isNaN(sVal) ? 0 : sVal,
+      profit: isNaN(pVal) ? 0 : pVal,
     };
-    business: {
-      businessSummary?: string;
-      businessModel?: string;
-      competitiveAdvantages?: string;
-      keyProducts?: string;
-      keyServices?: string;
-      keyCustomers?: string;
-      majorSubsidiaries?: string;
-      jointVentures?: string;
-      geographicPresence?: string;
-      industryPosition?: string;
-      marketLeadershipNotes?: string;
+  }).filter(d => d.sales > 0);
+}
+
+function parseLatestShareholding(stockData: any) {
+  if (!stockData || !stockData.shareholding || !Array.isArray(stockData.shareholding.quarterly)) {
+    return [];
+  }
+  const quarterly = stockData.shareholding.quarterly;
+  if (quarterly.length === 0) return [];
+
+  const firstRow = quarterly[0];
+  const labelKey = Object.keys(firstRow).find(k => k === '' || k === 'Metric') || '';
+  const allPeriods = Object.keys(firstRow).filter((k) => k !== labelKey && k !== 'Metric' && k !== '__v');
+  if (allPeriods.length === 0) return [];
+
+  const latestPeriod = allPeriods[allPeriods.length - 1];
+
+  return quarterly.map((row: any) => {
+    const name = (row[labelKey] || '').replace(/ \+$/, '').trim();
+    if (!name || name.toLowerCase().includes('shareholders')) return null;
+    const value = parseFloat(String(row[latestPeriod] ?? 0).replace(/%/g, ''));
+    return {
+      category: name,
+      value: isNaN(value) ? 0 : value,
     };
-    segments: Array<{
-      segmentName: string;
-      revenueContribution: number | null;
-      profitContribution: number | null;
-      segmentDescription: string | null;
-      year: number;
-    }>;
-    growth: {
-      revenueCagr: number | null;
-      netProfitCagr: number | null;
-      history: Array<{
-        year: number;
-        revenue: number | null;
-        ebitda: number | null;
-        netProfit: number | null;
-        eps: number | null;
-        revenueYoY: number | null;
-        netProfitYoY: number | null;
-        bookValue: number | null;
-        operatingCashFlow: number | null;
-        freeCashFlow: number | null;
-      }>;
+  }).filter(Boolean) as Array<{ category: string; value: number }>;
+}
+
+function parseQuarterlyFinancials(stockData: any) {
+  if (!stockData || !Array.isArray(stockData.quarters)) return [];
+  const quarters = stockData.quarters;
+  if (quarters.length === 0) return [];
+
+  const salesRow = quarters.find((r: any) => r.Metric === "Sales");
+  const profitRow = quarters.find((r: any) => r.Metric === "Net Profit");
+  if (!salesRow) return [];
+
+  const periods = Object.keys(salesRow).filter(
+    (k) => k !== "Metric" && k !== "_id" && k !== "id" && k !== "__v"
+  );
+
+  const last6Periods = periods.slice(-6);
+
+  return last6Periods.map((p) => {
+    const sVal = parseFloat(String(salesRow[p] ?? 0).replace(/,/g, ""));
+    const pVal = profitRow ? parseFloat(String(profitRow[p] ?? 0).replace(/,/g, "")) : 0;
+    return {
+      quarter: p,
+      sales: isNaN(sVal) ? 0 : sVal,
+      profit: isNaN(pVal) ? 0 : pVal,
     };
-    profitability: {
-      avgRoe: number | null;
-      avgRoce: number | null;
-      history: Array<{
-        year: number;
-        roe: number | null;
-        roce: number | null;
-        roa: number | null;
-        grossMargin: number | null;
-        operatingMargin: number | null;
-        ebitdaMargin: number | null;
-        netMargin: number | null;
-        assetTurnover: number | null;
-        interestCoverage: number | null;
-        cashConversionRatio: number | null;
-      }>;
-    };
-    balanceSheet: {
-      history: Array<{
-        year: number;
-        assets: number | null;
-        equity: number | null;
-        cash: number | null;
-        debt: number | null;
-        netDebt: number;
-        debtToEquity: number | null;
-      }>;
-    };
-    valuation: {
-      pe: number | null;
-      forwardPe: number | null;
-      pb: number | null;
-      ps: number | null;
-      peg: number | null;
-      evEbitda: number | null;
-      evSales: number | null;
-      dividendYield: number | null;
-      marketCap: number | null;
-      enterpriseValue: number | null;
-    };
-    ownership: {
-      trendNote: string;
-      history: Array<{
-        quarter: string;
-        promoter: number | null;
-        promoterPledged: number | null;
-        fii: number | null;
-        dii: number | null;
-        publicHolding: number | null;
-        others: number | null;
-      }>;
-    };
-    orderBook: Array<{
-      year: number;
-      orderBookValue: number | null;
-      orderInflows: number | null;
-      bookToBillRatio: number | null;
-      comments: string | null;
-    }>;
-    developments: Array<{
-      title: string;
-      category: string;
-      summary: string | null;
-      announcementDate: string;
-      sourceUrl: string | null;
-    }>;
-    growthDrivers: Array<{
-      driverType: string;
-      description: string;
-      importanceScore: number | null;
-      source: string | null;
-    }>;
-    risks: Array<{
-      riskType: string;
-      description: string;
-      severity: string;
-    }>;
-    managementCommentary: Array<{
-      period: string;
-      commentaryType: string;
-      summary: string;
-      source: string | null;
-    }>;
+  });
+}
+
+function parseCompoundedRates(stockData: any) {
+  if (!stockData || !stockData.profit_and_loss) return null;
+  const pnl = stockData.profit_and_loss;
+
+  const parseArray = (arr: any) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map((item) => {
+      const entries = Object.entries(item);
+      if (entries.length === 0) return null;
+      const [period, val] = entries[0];
+      return {
+        period: period.trim(),
+        value: String(val).replace(/%/g, "").trim(),
+      };
+    }).filter(Boolean) as Array<{ period: string; value: string }>;
+  };
+
+  return {
+    sales: parseArray(pnl['Compounded Sales Growth']),
+    profit: parseArray(pnl['Compounded Profit Growth']),
+    stock: parseArray(pnl['Stock Price CAGR']),
+    roe: parseArray(pnl['Return on Equity']),
   };
 }
 
-interface MarkdownRendererProps {
-  content: string;
+// ─── SVG Math Helper ──────────────────────────────────────────────────────────
+
+function getDonutSlicePath(
+  cx: number, cy: number,
+  innerRadius: number, outerRadius: number,
+  startAngleDegrees: number, endAngleDegrees: number
+) {
+  const startAngleRad = (startAngleDegrees - 90) * Math.PI / 180.0;
+  const endAngleRad = (endAngleDegrees - 90) * Math.PI / 180.0;
+
+  const x1Outer = cx + outerRadius * Math.cos(startAngleRad);
+  const y1Outer = cy + outerRadius * Math.sin(startAngleRad);
+  const x2Outer = cx + outerRadius * Math.cos(endAngleRad);
+  const y2Outer = cy + outerRadius * Math.sin(endAngleRad);
+
+  const x1Inner = cx + innerRadius * Math.cos(startAngleRad);
+  const y1Inner = cy + innerRadius * Math.sin(startAngleRad);
+  const x2Inner = cx + innerRadius * Math.cos(endAngleRad);
+  const y2Inner = cy + innerRadius * Math.sin(endAngleRad);
+
+  const largeArcFlag = endAngleDegrees - startAngleDegrees <= 180 ? "0" : "1";
+
+  return [
+    `M ${x1Outer} ${y1Outer}`,
+    `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2Outer} ${y2Outer}`,
+    `L ${x2Inner} ${y2Inner}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x1Inner} ${y1Inner}`,
+    "Z"
+  ].join(" ");
 }
 
-function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  if (!content) return null;
+// ─── Interactive SVG Chart Components ────────────────────────────────────────
 
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let currentList: React.ReactNode[] = [];
+function InteractiveFinancialChart({ stockData }: { stockData: any }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const parseInline = (text: string) => {
-    const parts = text.split(/\*\*([^*]+)\*\*/g);
-    return parts.map((part, i) => {
-      if (i % 2 === 1) {
-        return <strong key={i} className="font-extrabold text-white">{part}</strong>;
-      }
-      return part;
-    });
-  };
+  if (!stockData) return null;
 
-  const flushList = (key: number) => {
-    if (currentList.length > 0) {
-      elements.push(
-        <ul key={`list-${key}`} className="list-disc pl-5 my-3 space-y-1.5 text-slate-300 text-sm">
-          {currentList}
-        </ul>
-      );
-      currentList = [];
-    }
-  };
+  const data = parseAnnualFinancials(stockData);
+  if (data.length === 0) return null;
 
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
+  const maxSales = Math.max(...data.map(d => d.sales));
+  const maxProfit = Math.max(...data.map(d => d.profit));
+  const maxVal = Math.max(maxSales, maxProfit * 1.2, 1);
 
-    if (trimmed.startsWith('# ')) {
-      flushList(index);
-      elements.push(
-        <h1 key={index} className="text-2xl font-bold text-white mt-6 mb-3 border-b border-slate-800 pb-1">
-          {parseInline(trimmed.slice(2))}
-        </h1>
-      );
-    } else if (trimmed.startsWith('## ')) {
-      flushList(index);
-      elements.push(
-        <h2 key={index} className="text-xl font-bold text-white mt-5 mb-2.5">
-          {parseInline(trimmed.slice(3))}
-        </h2>
-      );
-    } else if (trimmed.startsWith('### ')) {
-      flushList(index);
-      elements.push(
-        <h3 key={index} className="text-lg font-bold text-white mt-4 mb-2">
-          {parseInline(trimmed.slice(4))}
-        </h3>
-      );
-    } else if (trimmed.startsWith('#### ')) {
-      flushList(index);
-      elements.push(
-        <h4 key={index} className="text-base font-bold text-white mt-3.5 mb-1.5">
-          {parseInline(trimmed.slice(5))}
-        </h4>
-      );
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      currentList.push(
-        <li key={index} className="leading-relaxed">
-          {parseInline(trimmed.slice(2))}
-        </li>
-      );
-    } else if (trimmed === '') {
-      flushList(index);
-      elements.push(<div key={index} className="h-2" />);
-    } else {
-      flushList(index);
-      elements.push(
-        <p key={index} className="text-slate-300 leading-relaxed text-sm my-2">
-          {parseInline(trimmed)}
-        </p>
-      );
-    }
+  const width = 600;
+  const height = 280;
+  const padding = { top: 30, right: 20, bottom: 45, left: 75 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const gridTicks = 5;
+  const gridLines = Array.from({ length: gridTicks }).map((_, i) => {
+    const yVal = maxVal * (i / (gridTicks - 1));
+    const yPos = padding.top + chartHeight - (yVal / maxVal) * chartHeight;
+    return { yPos, label: formatCr(yVal) };
   });
 
-  flushList(lines.length);
+  function formatCr(val: number) {
+    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L Cr`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k Cr`;
+    return `₹${val.toFixed(0)} Cr`;
+  }
 
-  return <div className="space-y-1">{elements}</div>;
+  return (
+    <div className="relative bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 w-full shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
+        <div>
+          <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Activity className="w-5 h-5 text-indigo-400" /> Revenue & Profit Trend (Annual)
+          </h4>
+          <p className="text-xs text-slate-500 mt-1">Hover over bars to view detailed numbers and margins</p>
+        </div>
+        <div className="flex gap-4 text-xs uppercase font-bold tracking-wider">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+            <span className="text-slate-300">Sales</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+            <span className="text-slate-300">Net Profit</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
+        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+          {gridLines.map((line, idx) => (
+            <g key={idx}>
+              <line
+                x1={padding.left}
+                y1={line.yPos}
+                x2={width - padding.right}
+                y2={line.yPos}
+                stroke="#1e293b"
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+              />
+              <text
+                x={padding.left - 12}
+                y={line.yPos + 4}
+                fill="#64748b"
+                fontSize="10"
+                fontWeight="bold"
+                textAnchor="end"
+                className="tabular-nums"
+              >
+                {line.label}
+              </text>
+            </g>
+          ))}
+
+          <line
+            x1={padding.left}
+            y1={padding.top + chartHeight}
+            x2={width - padding.right}
+            y2={padding.top + chartHeight}
+            stroke="#334155"
+            strokeWidth="2"
+          />
+
+          {data.map((d, idx) => {
+            const groupWidth = chartWidth / data.length;
+            const xGroupStart = padding.left + idx * groupWidth;
+            const barWidth = Math.min(18, groupWidth * 0.35);
+            const gap = 4;
+
+            const xSales = xGroupStart + (groupWidth - barWidth * 2 - gap) / 2;
+            const xProfit = xSales + barWidth + gap;
+
+            const hSales = (d.sales / maxVal) * chartHeight;
+            const hProfit = (d.profit / maxVal) * chartHeight;
+
+            const ySales = padding.top + chartHeight - hSales;
+            const yProfit = padding.top + chartHeight - hProfit;
+
+            const isHovered = hoveredIndex === idx;
+
+            return (
+              <g
+                key={idx}
+                onMouseEnter={() => setHoveredIndex(idx)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                className="cursor-pointer"
+              >
+                <rect
+                  x={xGroupStart + 2}
+                  y={padding.top - 5}
+                  width={groupWidth - 4}
+                  height={chartHeight + 10}
+                  fill={isHovered ? "rgba(99, 102, 241, 0.04)" : "transparent"}
+                  rx="8"
+                  className="transition-all duration-300"
+                />
+
+                {/* Sales Bar */}
+                <rect
+                  x={xSales}
+                  y={ySales}
+                  width={barWidth}
+                  height={Math.max(2, hSales)}
+                  fill="url(#salesGrad)"
+                  rx="4"
+                  className="transition-all duration-300"
+                  opacity={hoveredIndex !== null && !isHovered ? 0.4 : 1}
+                  filter={isHovered ? "url(#glowSales)" : ""}
+                />
+
+                {/* Profit Bar */}
+                <rect
+                  x={xProfit}
+                  y={yProfit}
+                  width={barWidth}
+                  height={Math.max(2, hProfit)}
+                  fill="url(#profitGrad)"
+                  rx="4"
+                  className="transition-all duration-300"
+                  opacity={hoveredIndex !== null && !isHovered ? 0.4 : 1}
+                  filter={isHovered ? "url(#glowProfit)" : ""}
+                />
+
+                <text
+                  x={xGroupStart + groupWidth / 2}
+                  y={padding.top + chartHeight + 20}
+                  fill={isHovered ? "#ffffff" : "#94a3b8"}
+                  fontSize="10"
+                  fontWeight={isHovered ? "bold" : "semibold"}
+                  textAnchor="middle"
+                  className="transition-all duration-300"
+                >
+                  {d.year}
+                </text>
+              </g>
+            );
+          })}
+
+          <defs>
+            <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#4f46e5" />
+            </linearGradient>
+            <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" />
+              <stop offset="100%" stopColor="#059669" />
+            </linearGradient>
+            <filter id="glowSales" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="glowProfit" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+        </svg>
+
+        {hoveredIndex !== null && data[hoveredIndex] && (
+          <div
+            className="absolute z-10 bg-slate-950/95 border border-indigo-500/30 rounded-xl p-4 shadow-2xl backdrop-blur-md pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95"
+            style={{
+              left: `${Math.min(
+                width - 210,
+                Math.max(
+                  10,
+                  padding.left + hoveredIndex * (chartWidth / data.length) + (chartWidth / data.length) / 2 - 105
+                )
+              )}px`,
+              top: `${padding.top - 10}px`,
+            }}
+          >
+            <p className="text-xs font-black text-slate-400 border-b border-slate-800 pb-1.5 mb-2 flex justify-between items-center uppercase tracking-widest">
+              <span>{data[hoveredIndex].year}</span>
+              <span className="text-indigo-400 font-bold">Annual</span>
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between gap-6">
+                <span className="text-slate-400 font-medium">Revenue:</span>
+                <span className="text-white font-bold tabular-nums">₹{data[hoveredIndex].sales.toLocaleString("en-IN")} Cr</span>
+              </div>
+              <div className="flex justify-between gap-6">
+                <span className="text-slate-400 font-medium">Net Profit:</span>
+                <span className="text-emerald-400 font-bold tabular-nums">₹{data[hoveredIndex].profit.toLocaleString("en-IN")} Cr</span>
+              </div>
+              <div className="flex justify-between gap-6 border-t border-slate-800/60 pt-1.5 mt-1.5 text-xs">
+                <span className="text-slate-400 font-semibold">Profit Margin (NPM):</span>
+                <span className="text-indigo-300 font-bold tabular-nums">
+                  {((data[hoveredIndex].profit / data[hoveredIndex].sales) * 100).toFixed(2)}%
+                </span>
+              </div>
+              {hoveredIndex > 0 && data[hoveredIndex - 1] && (
+                <div className="flex justify-between gap-6 text-xs border-t border-slate-800/60 pt-1.5">
+                  <span className="text-slate-400 font-semibold">YoY Sales Growth:</span>
+                  {(() => {
+                    const diff = data[hoveredIndex].sales - data[hoveredIndex - 1].sales;
+                    const pct = (diff / data[hoveredIndex - 1].sales) * 100;
+                    return (
+                      <span className={`font-bold tabular-nums ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+                      </span>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-export default function StockAnalyzer() {
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [stockData, setStockData] = useState<StockResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [availableStocks, setAvailableStocks] = useState<Array<{ ticker: string; companyName: string }>>([]);
-  const router = useRouter();
+function ShareholdingDonutChart({ stockData }: { stockData: any }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  useEffect(() => {
-    const fetchAvailable = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/symbol`);
-        if (res.ok) {
-          const data = await res.json();
-          setAvailableStocks(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch available stocks:", err);
-      }
+  if (!stockData) return null;
+
+  const data = parseLatestShareholding(stockData);
+  if (data.length === 0) return null;
+
+  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+
+  const cx = 120;
+  const cy = 120;
+  const outerRadius = 95;
+  const innerRadius = 65;
+
+  const COLORS = ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#64748b"];
+
+  let currentAngle = 0;
+  const slices = data.map((d, idx) => {
+    const val = d.value;
+    const angle = (val / (total || 1)) * 360;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + (angle >= 360 ? 359.99 : angle);
+    currentAngle += angle;
+    return {
+      ...d,
+      startAngle,
+      endAngle,
+      color: COLORS[idx % COLORS.length],
     };
-    fetchAvailable();
-  }, []);
+  });
 
-  const performSearch = async (ticker: string) => {
-    if (!ticker) return;
+  const activeSlice = hoveredIdx !== null ? slices[hoveredIdx] : null;
 
-    setLoading(true);
-    setError(null);
-    setHasSearched(true);
-    setStockData(null);
+  return (
+    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-center gap-8 shadow-lg">
+      <div className="relative w-[240px] h-[240px] flex-shrink-0">
+        <svg width="240" height="240" viewBox="0 0 240 240" className="overflow-visible">
+          {slices.map((slice, idx) => {
+            const isHovered = hoveredIdx === idx;
+            const currentOuterRad = isHovered ? outerRadius + 6 : outerRadius;
+            const currentInnerRad = isHovered ? innerRadius - 3 : innerRadius;
+            
+            const pathData = getDonutSlicePath(
+              cx, cy,
+              currentInnerRad, currentOuterRad,
+              slice.startAngle, slice.endAngle
+            );
 
-    try {
-      const res = await fetch(`${API_BASE}/symbol/${ticker}`);
-      const data = await res.json();
+            return (
+              <path
+                key={idx}
+                d={pathData}
+                fill={slice.color}
+                className="transition-all duration-300 cursor-pointer"
+                opacity={hoveredIdx !== null && !isHovered ? 0.6 : 1}
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                style={{
+                  filter: isHovered ? `drop-shadow(0 0 10px ${slice.color}50)` : "none"
+                }}
+              />
+            );
+          })}
+        </svg>
 
-      if (!res.ok) {
-        throw new Error(data.message || `No pre-computed report found for ticker ${ticker}.`);
-      }
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+          {activeSlice ? (
+            <>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                {activeSlice.category}
+              </span>
+              <span className="text-xl font-black text-white mt-1.5 leading-none">
+                {activeSlice.value.toFixed(2)}%
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+                Ownership Mix
+              </span>
+              <span className="text-xs font-bold text-indigo-400 mt-2 leading-tight uppercase tracking-wider">
+                Latest Qtr
+              </span>
+            </>
+          )}
+        </div>
+      </div>
 
-      setStockData(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(
-        err.message || "Failed to connect to backend server. Make sure the API service is active."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      <div className="flex-1 space-y-4 w-full">
+        <span className="text-xs font-black text-slate-500 uppercase tracking-widest block">Shareholding Structure</span>
+        <div className="grid grid-cols-2 sm:grid-cols-1 gap-2.5">
+          {slices.map((slice, idx) => {
+            const isHovered = hoveredIdx === idx;
+            return (
+              <div
+                key={idx}
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
+                  isHovered
+                    ? "bg-indigo-950/20 border-indigo-500/35 text-white shadow-md shadow-indigo-500/5"
+                    : "bg-slate-950/40 border-slate-800/40 text-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor: slice.color,
+                      boxShadow: isHovered ? `0 0 8px ${slice.color}` : "none"
+                    }}
+                  />
+                  <span className="text-sm font-semibold">{slice.category}</span>
+                </div>
+                <span className="text-sm font-bold tabular-nums">{slice.value.toFixed(2)}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ticker = search.trim().toUpperCase();
-    if (ticker) {
-      router.push(`/stock/${ticker}`);
-    }
-  };
+function QuarterlyTrendChart({ stockData }: { stockData: any }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const handleBadgeClick = (ticker: string) => {
-    setSearch(ticker);
-    if (ticker) {
-      router.push(`/stock/${ticker}`);
-    }
-  };
+  if (!stockData) return null;
 
-  const fmtCurrency = (val: number | null) => {
-    if (val == null) return "—";
-    return `₹${val.toLocaleString("en-IN")} Cr`;
-  };
+  const data = parseQuarterlyFinancials(stockData);
+  if (data.length === 0) return null;
 
-  const fmtPercent = (val: number | null) => {
-    if (val == null) return "—";
-    return `${val.toFixed(2)}%`;
+  const width = 600;
+  const height = 240;
+  const padding = { top: 25, right: 65, bottom: 40, left: 65 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const maxSales = Math.max(...data.map(d => d.sales), 1);
+  const maxProfit = Math.max(...data.map(d => d.profit), 1);
+
+  const salesPoints = data.map((d, i) => {
+    const x = padding.left + i * (chartWidth / (data.length - 1 || 1));
+    const y = padding.top + chartHeight - (d.sales / maxSales) * chartHeight;
+    return { x, y, ...d };
+  });
+
+  const profitPoints = data.map((d, i) => {
+    const x = padding.left + i * (chartWidth / (data.length - 1 || 1));
+    const y = padding.top + chartHeight - (d.profit / maxProfit) * chartHeight;
+    return { x, y, ...d };
+  });
+
+  const salesPath = salesPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  const profitPath = profitPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+
+  const formatCr = (val: number) => {
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k Cr`;
+    return `₹${val.toFixed(0)} Cr`;
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 py-10 px-4 md:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Title and Search Form */}
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h1 className="text-4xl font-extrabold tracking-tight text-white">
-            AI Stock Analysis Platform
-          </h1>
-          <p className="text-slate-400 text-lg">
-            Enter an NSE ticker symbol to read our pre-computed financials and AI-powered research reports.
-          </p>
-          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="e.g., RELIANCE, TCS, HDFCBANK, INFY..."
-              className="flex-1 text-lg py-6 bg-[#0b101c] border-slate-800 text-slate-200 placeholder-slate-600 focus:border-primary/50"
-            />
-            <Button type="submit" size="lg" className="bg-primary hover:bg-primary/95 text-white font-semibold shadow-lg shadow-primary/20 px-8">
-              <Search className="w-5 h-5 mr-2" /> Search
-            </Button>
-          </form>
+    <div className="relative bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 w-full shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
+        <div>
+          <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Zap className="w-5 h-5 text-indigo-400" /> Quarterly Sales & Net Profit
+          </h4>
+          <p className="text-xs text-slate-500 mt-1">Dual-axis view (Left: Sales, Right: Net Profit)</p>
+        </div>
+        <div className="flex gap-4 text-xs uppercase font-bold tracking-wider">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]" />
+            <span className="text-slate-300">Sales</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+            <span className="text-slate-300">Net Profit</span>
+          </div>
+        </div>
+      </div>
 
-          {availableStocks.length > 0 && (
-            <div className="flex flex-wrap gap-2 items-center justify-center max-w-3xl mx-auto mt-4 text-xs">
-              <span className="text-slate-500 font-medium mr-1 uppercase tracking-wider text-[10px]">Database Stocks:</span>
-              {availableStocks.map((stock) => (
-                <button
-                  key={stock.ticker}
-                  type="button"
-                  onClick={() => handleBadgeClick(stock.ticker)}
-                  className="px-2.5 py-1 bg-slate-900/60 hover:bg-primary/20 border border-slate-850 hover:border-primary/40 text-xs font-semibold rounded-full text-slate-300 hover:text-white transition cursor-pointer"
-                  title={stock.companyName}
+      <div className="relative">
+        <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+            const y = padding.top + chartHeight - ratio * chartHeight;
+            const salesVal = ratio * maxSales;
+            const profitVal = ratio * maxProfit;
+            return (
+              <g key={idx}>
+                <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#1e293b" strokeWidth="1" strokeDasharray="3 3" />
+                <text x={padding.left - 8} y={y + 3} fill="#475569" fontSize="9" fontWeight="black" textAnchor="end" className="tabular-nums">
+                  {formatCr(salesVal)}
+                </text>
+                <text x={width - padding.right + 8} y={y + 3} fill="#059669" fontSize="9" fontWeight="black" textAnchor="start" className="tabular-nums">
+                  {formatCr(profitVal)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Sales area & line */}
+          <path
+            d={`${salesPath} L ${salesPoints[salesPoints.length - 1].x} ${padding.top + chartHeight} L ${salesPoints[0].x} ${padding.top + chartHeight} Z`}
+            fill="url(#salesAreaGrad2)"
+            opacity="0.08"
+          />
+          <path
+            d={salesPath}
+            fill="none"
+            stroke="#6366f1"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="drop-shadow(0 0 4px rgba(99,102,241,0.3))"
+          />
+
+          {/* Profit area & line */}
+          <path
+            d={`${profitPath} L ${profitPoints[profitPoints.length - 1].x} ${padding.top + chartHeight} L ${profitPoints[0].x} ${padding.top + chartHeight} Z`}
+            fill="url(#profitAreaGrad2)"
+            opacity="0.05"
+          />
+          <path
+            d={profitPath}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2.5"
+            strokeDasharray="4 2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="drop-shadow(0 0 4px rgba(16,185,129,0.2))"
+          />
+
+          {/* Dots */}
+          {data.map((_, idx) => {
+            const pSales = salesPoints[idx];
+            const pProfit = profitPoints[idx];
+            const isHovered = hoveredIdx === idx;
+            return (
+              <g key={idx}>
+                <circle
+                  cx={pSales.x}
+                  cy={pSales.y}
+                  r={isHovered ? 6 : 4}
+                  fill="#07090f"
+                  stroke="#6366f1"
+                  strokeWidth={isHovered ? 3 : 2}
+                  className="transition-all duration-200 cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                />
+                <circle
+                  cx={pProfit.x}
+                  cy={pProfit.y}
+                  r={isHovered ? 6 : 4}
+                  fill="#07090f"
+                  stroke="#10b981"
+                  strokeWidth={isHovered ? 3 : 2}
+                  className="transition-all duration-200 cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                />
+                <text
+                  x={pSales.x}
+                  y={padding.top + chartHeight + 18}
+                  fill={isHovered ? "#ffffff" : "#64748b"}
+                  fontSize="9"
+                  fontWeight="bold"
+                  textAnchor="middle"
                 >
-                  {stock.ticker}
+                  {pSales.quarter}
+                </text>
+              </g>
+            );
+          })}
+
+          <defs>
+            <linearGradient id="salesAreaGrad2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="profitAreaGrad2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {hoveredIdx !== null && data[hoveredIdx] && (
+          <div
+            className="absolute z-10 bg-slate-950 border border-indigo-500/20 rounded-xl py-2 px-3 shadow-2xl pointer-events-none text-xs animate-in fade-in duration-100"
+            style={{
+              left: `${Math.min(width - 150, Math.max(10, salesPoints[hoveredIdx].x - 70))}px`,
+              top: `${Math.min(height - 90, salesPoints[hoveredIdx].y - 30)}px`,
+            }}
+          >
+            <div className="flex flex-col space-y-1">
+              <span className="text-slate-500 font-bold border-b border-slate-800 pb-0.5 mb-0.5">{data[hoveredIdx].quarter}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-400">Sales:</span>
+                <span className="text-white font-bold tabular-nums">₹{data[hoveredIdx].sales.toLocaleString("en-IN")} Cr</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-400 font-medium">Net Profit:</span>
+                <span className="text-emerald-400 font-bold tabular-nums">₹{data[hoveredIdx].profit.toLocaleString("en-IN")} Cr</span>
+              </div>
+              <div className="flex justify-between gap-4 border-t border-slate-800/60 pt-0.5 text-[10px]">
+                <span className="text-slate-400 font-semibold">OPM %:</span>
+                <span className="text-indigo-300 font-bold">
+                  {((data[hoveredIdx].profit / data[hoveredIdx].sales) * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CAGRScorecardGrid({ stockData }: { stockData: any }) {
+  if (!stockData) return null;
+  const rates = parseCompoundedRates(stockData);
+  if (!rates || (!rates.sales.length && !rates.profit.length && !rates.stock.length && !rates.roe.length)) {
+    return null;
+  }
+
+  const sections = [
+    { title: "Compounded Sales Growth", data: rates.sales, color: "text-indigo-400", bg: "border-indigo-500/10 hover:border-indigo-500/20" },
+    { title: "Compounded Profit Growth", data: rates.profit, color: "text-emerald-400", bg: "border-emerald-500/10 hover:border-emerald-500/20" },
+    { title: "Stock Price CAGR", data: rates.stock, color: "text-amber-400", bg: "border-amber-500/10 hover:border-amber-500/20" },
+    { title: "Return on Equity (ROE)", data: rates.roe, color: "text-violet-400", bg: "border-violet-500/10 hover:border-violet-500/20" },
+  ];
+
+  return (
+    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-6 shadow-lg">
+      <span className="text-xs font-black text-slate-500 uppercase tracking-widest block">Compounded Growth & Efficiency Metrics</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {sections.map((sect) => {
+          if (sect.data.length === 0) return null;
+          return (
+            <div key={sect.title} className={`bg-slate-950/60 border rounded-xl p-5 space-y-4 transition-all hover:shadow-md ${sect.bg}`}>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">{sect.title}</span>
+              <div className="space-y-3">
+                {sect.data.map((item) => (
+                  <div key={item.period} className="flex justify-between items-center text-sm">
+                    <span className="text-slate-400 font-semibold">{item.period}</span>
+                    <span className={`font-extrabold tabular-nums ${sect.color}`}>{item.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any }) {
+  const gen = new Date(report.generated_at).toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div>
+          <h2 className="text-3xl font-black text-white tracking-tight">{report.company_name} ({report.ticker})</h2>
+          <p className="text-indigo-400 text-base mt-1 font-medium">{report.executive_summary?.one_liner}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5 font-semibold text-slate-400">
+            <Brain className="w-4 h-4 text-indigo-400" /> AI Report · {gen}
+          </span>
+          <span className="font-medium">{report.data_sources?.annual_reports_count} annual report(s) · {report.data_sources?.fiscal_years_covered?.join(", ")}</span>
+        </div>
+      </div>
+
+      {/* 1. Overview & Quality Score */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        {/* Quality Score card */}
+        <div className="md:col-span-2 space-y-6">
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Star className="w-5 h-5" />} title="Business Quality Profile" />
+            <div className="flex items-center gap-5 mb-6">
+              <div className="relative w-20 h-20 flex-shrink-0">
+                <svg className="w-20 h-20 -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="26" strokeWidth="6" stroke="#1e293b" fill="none" />
+                  <circle
+                    cx="32" cy="32" r="26" strokeWidth="6" fill="none"
+                    stroke={report.business_quality_score?.overall_score >= 7 ? "#22c55e" : report.business_quality_score?.overall_score >= 5 ? "#f59e0b" : "#ef4444"}
+                    strokeDasharray={`${(report.business_quality_score?.overall_score / 10) * 163.4} 163.4`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-black text-xl leading-none">
+                    {report.business_quality_score?.overall_score}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed font-semibold">
+                {report.business_quality_score?.score_rationale}
+              </p>
+            </div>
+            <div className="space-y-4.5">
+              {[
+                ["Revenue Visibility", report.business_quality_score?.revenue_visibility],
+                ["Management Quality", report.business_quality_score?.management_quality],
+                ["Competitive Moat", report.business_quality_score?.competitive_moat],
+                ["Balance Sheet Strength", report.business_quality_score?.balance_sheet_strength],
+                ["Earnings Quality", report.business_quality_score?.earnings_quality],
+                ["ESG Practices", report.business_quality_score?.esg_practices],
+              ].map(([l, v]) => <ScoreBar key={l as string} label={l as string} value={v as number} />)}
+            </div>
+          </InfoCard>
+
+          <ShareholdingDonutChart stockData={stockData} />
+        </div>
+
+        {/* Moat & Overview description */}
+        <div className="md:col-span-3 space-y-6">
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Building2 className="w-5 h-5" />} title="Business Description" />
+            <FormattedText text={report.executive_summary?.company_overview} />
+          </InfoCard>
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Target className="w-5 h-5" />} title="Investment Thesis" />
+            <FormattedText text={report.executive_summary?.investment_thesis} />
+          </InfoCard>
+        </div>
+      </div>
+
+      {/* 2. Financial Analysis */}
+      <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80 space-y-8">
+        <SectionHeading icon={<BarChart3 className="w-5 h-5" />} title="Financial Snaps & Trends" />
+
+        {/* Interactive SVG Charts */}
+        <div className="grid grid-cols-1 gap-8">
+          <InteractiveFinancialChart stockData={stockData} />
+          <CAGRScorecardGrid stockData={stockData} />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <QuarterlyTrendChart stockData={stockData} />
+            <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-6 md:p-8 space-y-4">
+              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">Latest Quarter Highlights</span>
+              <FormattedText text={report.financial_snapshot?.quarterly_highlights} />
+            </div>
+          </div>
+        </div>
+
+        {/* Financial commentary grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { label: "Revenue Trend", value: report.financial_snapshot?.revenue_trend },
+            { label: "Profitability Trend", value: report.financial_snapshot?.profit_trend },
+            { label: "Margin Analysis", value: report.financial_snapshot?.margin_analysis },
+            { label: "Cash Flow Dynamics", value: report.financial_snapshot?.cash_flow_summary },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-5 space-y-3">
+              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">{label}</span>
+              <FormattedText text={value} />
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-6 md:p-8 space-y-3">
+          <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">Balance Sheet Capital Structure</span>
+          <FormattedText text={report.financial_snapshot?.balance_sheet_health} />
+        </div>
+
+        {/* Key Ratios Table */}
+        {report.financial_snapshot?.key_ratios?.length > 0 && (
+          <div className="mt-8">
+            <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block mb-4">Longitudinal Return & Efficiency Ratios</span>
+            <div className="overflow-x-auto border border-slate-800/60 rounded-2xl">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950/50">
+                    {["Ratio Name", "Latest Value", "Benchmark Target", "Strategic Interpretation"].map(h => (
+                      <th key={h} className="text-left py-4 px-5 text-slate-400 font-black uppercase tracking-wider text-xs">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/40 bg-slate-950/20">
+                  {report.financial_snapshot.key_ratios.map((r) => (
+                    <tr key={r.name} className="hover:bg-indigo-950/5 transition-all">
+                      <td className="py-4 px-5 font-semibold text-white">{r.name}</td>
+                      <td className="py-4 px-5 text-indigo-300 font-bold tabular-nums">{r.value}</td>
+                      <td className="py-4 px-5 text-slate-400">{r.benchmark || "—"}</td>
+                      <td className="py-4 px-5 text-slate-300 leading-relaxed font-medium">{r.interpretation}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </InfoCard>
+
+      {/* 3. Bulls, Bears & Verdict */}
+      <div className="space-y-6">
+        {/* Stance Verdict Box */}
+        {report.bull_bear_analysis?.verdict && (
+          <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 md:p-8 flex gap-5">
+            <CheckCircle2 className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Lead Analyst Verdict</span>
+              <p className="text-base text-slate-100 mt-1.5 font-bold leading-relaxed">{report.bull_bear_analysis.verdict}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Bulls */}
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<TrendingUp className="w-5 h-5" />} title="Key Growth Drivers (Bull Case)" />
+            <div className="space-y-4">
+              {report.bull_bear_analysis?.bull_case?.map((b, i) => (
+                <div key={i} className="flex gap-4 p-5 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl transition-all hover:bg-emerald-500/10">
+                  <div className="flex-shrink-0 pt-0.5">
+                    <StrengthDot s={b.strength} />
+                  </div>
+                  <div>
+                    <p className="text-base font-extrabold text-white leading-tight">{b.point}</p>
+                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
+                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-extrabold capitalize mt-2.5 inline-block tracking-wider">
+                      {b.strength} Evidence
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </InfoCard>
+
+          {/* Bears */}
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<TrendingDown className="w-5 h-5" />} title="Key Risks & Moat Killers (Bear Case)" />
+            <div className="space-y-4">
+              {report.bull_bear_analysis?.bear_case?.map((b, i) => (
+                <div key={i} className="flex gap-4 p-5 bg-red-500/5 border border-red-500/10 rounded-2xl transition-all hover:bg-red-500/10">
+                  <div className="flex-shrink-0 pt-0.5">
+                    <RiskBadge level={b.severity} />
+                  </div>
+                  <div className="pt-0.5">
+                    <p className="text-base font-extrabold text-white leading-tight">{b.point}</p>
+                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </InfoCard>
+        </div>
+      </div>
+
+      {/* 4. Strategy & Risks */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
+        {/* Strategy Card */}
+        <div className="space-y-6">
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Zap className="w-5 h-5" />} title="Strategic Corporate Outlook" />
+            <div className="space-y-6">
+              <div>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Management Guidance & Outlook</span>
+                <FormattedText text={report.strategic_outlook?.management_guidance} className="mt-1.5" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">CapEx Allocations</span>
+                <FormattedText text={report.strategic_outlook?.capex_plans} className="mt-1.5" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Long-term Vision</span>
+                <FormattedText text={report.strategic_outlook?.long_term_vision} className="mt-1.5" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Key Growth Catalysts</span>
+                <ul className="mt-3 space-y-2.5">
+                  {report.strategic_outlook?.growth_catalysts?.map((c, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300 leading-relaxed font-medium">
+                      <ChevronRight className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+                      {renderBoldText(c)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </InfoCard>
+
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Leaf className="w-5 h-5" />} title="ESG Practices & Governance" />
+            <div className="space-y-6">
+              {[
+                { label: "Environmental Stewardship", value: report.esg_summary?.environmental },
+                { label: "Social Responsibilities", value: report.esg_summary?.social },
+                { label: "Corporate Governance Quality", value: report.esg_summary?.governance },
+                { label: "Corporate Social Responsibility (CSR)", value: report.esg_summary?.csr_initiatives },
+                { label: "ESG Certifications & Ratings", value: report.esg_summary?.esg_rating_notes },
+              ].map(({ label, value }) => value && (
+                <div key={label}>
+                  <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">{label}</span>
+                  <FormattedText text={value} className="mt-1.5" />
+                </div>
+              ))}
+            </div>
+          </InfoCard>
+        </div>
+
+        {/* Risks & Monitorables Card */}
+        <div className="space-y-6">
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Shield className="w-5 h-5" />} title="Operational Risk Matrix" />
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-sm text-slate-400 font-bold">Consolidated Risk Rating:</span>
+              <RiskBadge level={report.risk_matrix?.overall_risk_level} />
+            </div>
+            <div className="space-y-4">
+              {report.risk_matrix?.risks?.map((r, i) => (
+                <div key={i} className="border border-slate-800/60 bg-slate-950/40 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-extrabold text-white">{r.name}</span>
+                    <div className="flex gap-2">
+                      <RiskBadge level={r.probability} />
+                      <RiskBadge level={r.impact} />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Mitigation Plan</span>
+                    <p className="text-sm text-slate-300 mt-1 leading-relaxed font-medium">{r.mitigation}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </InfoCard>
+
+          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+            <SectionHeading icon={<Eye className="w-5 h-5" />} title="Key Monitorables (Watch Next 6-12 Months)" />
+            <div className="grid grid-cols-1 gap-4">
+              {report.key_monitorables?.map((m, i) => (
+                <div key={i} className="flex items-start gap-4 p-5 bg-slate-950/60 border border-slate-800/60 rounded-2xl transition-all hover:border-slate-700/80">
+                  <span className="text-indigo-400 font-black text-base flex-shrink-0 mt-0.5">#{i + 1}</span>
+                  <p className="text-sm text-slate-200 leading-relaxed font-bold">{renderBoldText(m)}</p>
+                </div>
+              ))}
+            </div>
+          </InfoCard>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <p className="text-[10px] text-slate-600 text-center leading-relaxed px-4 pt-4 pb-2 border-t border-slate-800/50">
+        {report.disclaimer}
+      </p>
+    </div>
+  );
+}
+
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+type ViewState = "idle" | "loading" | "report" | "not-found" | "error";
+
+export default function StocksPage() {
+  const [search, setSearch] = useState("");
+  const [viewState, setViewState] = useState<ViewState>("idle");
+  const [report, setReport] = useState<AIReport | null>(null);
+  const [stockData, setStockData] = useState<any | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const fetchReport = async (ticker: string) => {
+    const t = ticker.toUpperCase().trim();
+    if (!t) return;
+    setViewState("loading");
+    setReport(null);
+    setStockData(null);
+    setErrorMsg("");
+
+    try {
+      const res = await fetch(`${API_BASE}/api/ai-reports/${t}`);
+      const data = await res.json();
+
+      if (res.ok && data.success && data.report?.executive_summary) {
+        setReport(data.report as AIReport);
+        setStockData(data.stockData || null);
+        setViewState("report");
+      } else {
+        setViewState("not-found");
+      }
+    } catch {
+      setErrorMsg("Cannot connect to backend. Make sure the server is running.");
+      setViewState("error");
+    }
+  };
+
+  const triggerGenerate = async (ticker: string) => {
+    const t = ticker.toUpperCase().trim();
+    setGenerating(true);
+    try {
+      await fetch(`${API_BASE}/api/ai-reports/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker: t }),
+      });
+      // Poll after 60s
+      setTimeout(() => {
+        setGenerating(false);
+        fetchReport(t);
+      }, 60000);
+    } catch {
+      setGenerating(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchReport(search);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#07090f] text-slate-100">
+      {/* Hero search */}
+      <div className="border-b border-slate-800/50 bg-gradient-to-b from-slate-900/60 to-transparent">
+        <div className="max-w-4xl mx-auto px-4 py-12 text-center space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-2">
+            <Brain className="w-3 h-3" /> AI-Powered Equity Research
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white">
+            Stock Intelligence
+          </h1>
+          <p className="text-slate-400 text-lg max-w-xl mx-auto">
+            Type an NSE ticker to get a pre-computed, analyst-grade AI research report.
+          </p>
+          <form onSubmit={handleSubmit} className="flex gap-2 max-w-lg mx-auto">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="e.g. RELIANCE, TCS, INFY…"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" /> Analyse
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+
+        {/* Loading */}
+        {viewState === "loading" && (
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+              <Brain className="w-5 h-5 text-indigo-400 absolute inset-0 m-auto" />
+            </div>
+            <p className="text-slate-400 text-sm animate-pulse">Fetching AI report…</p>
+          </div>
+        )}
+
+        {/* Not found */}
+        {viewState === "not-found" && (
+          <div className="max-w-md mx-auto py-20 text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
+            <h3 className="text-xl font-bold text-white">No Report Found</h3>
+            <p className="text-slate-400 text-sm">
+              No AI report exists for <strong className="text-white">{search.toUpperCase()}</strong> yet.
+              {generating
+                ? " Generating now — this takes ~60 seconds. The page will refresh automatically."
+                : " Click below to generate one (requires stock data to be scraped first)."}
+            </p>
+            {!generating ? (
+              <button
+                onClick={() => triggerGenerate(search)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-sm transition-all inline-flex items-center gap-2"
+              >
+                <Zap className="w-4 h-4" /> Generate Report
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-indigo-400 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating… auto-refreshing in ~60s
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Error */}
+        {viewState === "error" && (
+          <div className="max-w-md mx-auto py-20 text-center space-y-3">
+            <AlertTriangle className="w-10 h-10 text-red-400 mx-auto" />
+            <p className="text-red-400 font-semibold">{errorMsg}</p>
+          </div>
+        )}
+
+        {/* Report */}
+        {viewState === "report" && report && (
+          <AIReportPanel report={report} stockData={stockData} />
+        )}
+
+        {/* Idle state */}
+        {viewState === "idle" && (
+          <div className="py-20 text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto">
+              <BarChart3 className="w-7 h-7 text-slate-600" />
+            </div>
+            <p className="text-slate-500 text-sm">Enter a ticker above to load its AI report.</p>
+            <div className="flex flex-wrap gap-2 justify-center mt-4">
+              {["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setSearch(t); fetchReport(t); }}
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 border border-slate-800 rounded-full hover:border-indigo-500/40 hover:text-indigo-300 transition-all"
+                >
+                  {t}
                 </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* Loading and Error blocks */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-32 space-y-4">
-            <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-slate-400 animate-pulse text-sm">Retrieving stock context and compiling research report...</p>
           </div>
         )}
-
-        {error && (
-          <Card className="max-w-xl mx-auto border-rose-500/20 bg-rose-950/10 text-slate-100">
-            <CardHeader className="flex flex-row items-center space-x-3 pb-3">
-              <AlertTriangle className="w-6 h-6 text-rose-400 flex-shrink-0" />
-              <CardTitle className="text-lg text-rose-400">Stock Research Not Found</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-slate-300 leading-relaxed">
-                {error}
-              </p>
-              <div className="text-xs bg-slate-950 p-3 rounded text-slate-500 font-mono">
-                💡 Admin Tip: Access the Admin Panel to run the ingestion scrapers for {search.toUpperCase()} first to precompute its intelligence context.
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Dynamic stock dashboard content */}
-        {stockData && !loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Left and Middle column (Details, Tables) */}
-            <div className="lg:col-span-2 space-y-8">
-              
-              {/* Company Info Banner */}
-              <Card className="bg-slate-900/40 border-slate-800/80 backdrop-blur-xl">
-                <CardHeader className="pb-4">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <CardTitle className="text-3xl font-extrabold text-white">
-                          {stockData.context.profile.companyName}
-                        </CardTitle>
-                        <Badge className="bg-primary/10 border-primary/20 text-primary">NSE: {stockData.ticker}</Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-400 text-sm mt-2 font-medium">
-                        {stockData.context.profile.sector && (
-                          <span className="flex items-center">
-                            <Briefcase className="w-3.5 h-3.5 mr-1.5 opacity-60" /> Sector: {stockData.context.profile.sector}
-                          </span>
-                        )}
-                        {stockData.context.profile.industry && (
-                          <span className="flex items-center">
-                            <Building2 className="w-3.5 h-3.5 mr-1.5 opacity-60" /> Industry: {stockData.context.profile.industry}
-                          </span>
-                        )}
-                        {stockData.context.profile.isin && (
-                          <span className="text-xs font-mono bg-slate-950/60 px-2 py-0.5 rounded text-slate-500 border border-slate-900">
-                            ISIN: {stockData.context.profile.isin}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {stockData.context.profile.website && (
-                      <a
-                        href={stockData.context.profile.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center text-sm font-semibold text-primary hover:underline"
-                      >
-                        <Globe className="w-4 h-4 mr-1.5" /> Visit Website
-                      </a>
-                    )}
-                  </div>
-                </CardHeader>
-              </Card>
-
-              {/* Ratios Metric Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { label: "Market Cap", value: fmtCurrency(stockData.context.valuation.marketCap), desc: "Current Valuation" },
-                  { label: "Stock P/E", value: stockData.context.valuation.pe ?? "—", desc: "Price-to-Earnings" },
-                  { label: "Price to Book (P/B)", value: stockData.context.valuation.pb ?? "—", desc: "Price-to-Book ratio" },
-                  { label: "Dividend Yield", value: fmtPercent(stockData.context.valuation.dividendYield), desc: "Annual Yield" },
-                  { label: "PEG Ratio", value: stockData.context.valuation.peg ?? "—", desc: "PE / Growth Rate" },
-                  { label: "EV / EBITDA", value: stockData.context.valuation.evEbitda ?? "—", desc: "Enterprise Value ratio" },
-                  { label: "Avg ROE (3-5Y)", value: fmtPercent(stockData.context.profitability.avgRoe), desc: "Return on Equity" },
-                  { label: "Avg ROCE (3-5Y)", value: fmtPercent(stockData.context.profitability.avgRoce), desc: "Return on Capital" }
-                ].map((stat) => (
-                  <Card key={stat.label} className="border-slate-800 bg-slate-900/30 backdrop-blur-md">
-                    <CardContent className="p-4 flex flex-col justify-between h-full">
-                      <div>
-                        <span className="text-xs font-semibold text-slate-400 block mb-1 uppercase tracking-wider">{stat.label}</span>
-                        <span className="text-xl font-bold text-white block">{stat.value}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-500 mt-2 block select-none leading-none">{stat.desc}</span>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Detailed Navigation Tabs */}
-              <Tabs defaultValue="report" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 bg-slate-950/80 border border-slate-900 rounded-lg p-1.5 h-auto">
-                  <TabsTrigger value="report" className="py-2.5 text-xs font-semibold">AI Report</TabsTrigger>
-                  <TabsTrigger value="overview" className="py-2.5 text-xs font-semibold">Business Info</TabsTrigger>
-                  <TabsTrigger value="financials" className="py-2.5 text-xs font-semibold">Growth History</TabsTrigger>
-                  <TabsTrigger value="ownership" className="py-2.5 text-xs font-semibold">Shareholding</TabsTrigger>
-                  <TabsTrigger value="commentary" className="py-2.5 text-xs font-semibold">Commentary</TabsTrigger>
-                </TabsList>
-                
-                {/* AI Research Report */}
-                <TabsContent value="report" className="mt-6">
-                  <Card className="border-slate-800 bg-slate-900/20 backdrop-blur-xl">
-                    <CardHeader className="border-b border-slate-900 pb-4">
-                      <CardTitle className="text-lg flex items-center text-white font-bold">
-                        <FileText className="w-5 h-5 mr-2 text-primary" /> Generated Equity Research Report
-                      </CardTitle>
-                      <CardDescription>Generated by senior AI analyst from database context</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                      <div className="font-sans leading-relaxed text-slate-300 text-sm select-all space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                        <MarkdownRenderer content={stockData.report} />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Business Info */}
-                <TabsContent value="overview" className="mt-6 space-y-6">
-                  <Card className="border-slate-800 bg-slate-900/20">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center text-white">
-                        <Info className="w-5 h-5 mr-2 text-primary" /> Business Summary
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-slate-300 leading-relaxed text-sm">
-                        {stockData.context.profile.description || "No description available."}
-                      </p>
-                      {stockData.context.business.businessModel && (
-                        <div>
-                          <h4 className="font-bold text-sm text-white mb-1.5">Business Model:</h4>
-                          <p className="text-xs text-slate-400 leading-relaxed">{stockData.context.business.businessModel}</p>
-                        </div>
-                      )}
-                      {stockData.context.business.competitiveAdvantages && (
-                        <div>
-                          <h4 className="font-bold text-sm text-white mb-1.5">Competitive Advantages (Moat):</h4>
-                          <p className="text-xs text-slate-400 leading-relaxed">{stockData.context.business.competitiveAdvantages}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Business segments */}
-                  {stockData.context.segments.length > 0 && (
-                    <Card className="border-slate-800 bg-slate-900/20">
-                      <CardHeader><CardTitle className="text-sm font-bold text-white">Operational Segments</CardTitle></CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {stockData.context.segments.map((seg, idx) => (
-                            <div key={idx} className="bg-slate-950/40 border border-slate-900 p-3 rounded">
-                              <h5 className="font-semibold text-xs text-white uppercase tracking-wider">{seg.segmentName}</h5>
-                              <div className="flex justify-between mt-2 text-xs text-slate-400">
-                                <span>Revenue: {fmtPercent(seg.revenueContribution)}</span>
-                                <span>Profit: {fmtPercent(seg.profitContribution)}</span>
-                              </div>
-                              {seg.segmentDescription && (
-                                <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">{seg.segmentDescription}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-
-                {/* Financial History Table */}
-                <TabsContent value="financials" className="mt-6 space-y-6">
-                  <Card className="border-slate-800 bg-slate-900/20">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-white font-bold">5-Year Growth Statement</CardTitle>
-                      <CardDescription>Annual balance sheet and cash flow indicators (Values in ₹ Crore)</CardDescription>
-                    </CardHeader>
-                    <CardContent className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase select-none">
-                            <th className="py-2.5">Year</th>
-                            <th className="py-2.5">Revenue</th>
-                            <th className="py-2.5">EBITDA</th>
-                            <th className="py-2.5">Net Profit</th>
-                            <th className="py-2.5">Debt</th>
-                            <th className="py-2.5">Op. Cash Flow</th>
-                            <th className="py-2.5">Free Cash Flow</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-900">
-                          {stockData.context.growth.history.map((row) => (
-                            <tr key={row.year} className="text-slate-300 hover:bg-slate-900/20">
-                              <td className="py-3 font-semibold text-white">{row.year}</td>
-                              <td className="py-3">{fmtCurrency(row.revenue)}</td>
-                              <td className="py-3">{fmtCurrency(row.ebitda)}</td>
-                              <td className="py-3">{fmtCurrency(row.netProfit)}</td>
-                              <td className="py-3">{fmtCurrency(row.bookValue)}</td>
-                              <td className="py-3">{fmtCurrency(row.operatingCashFlow)}</td>
-                              <td className="py-3">{fmtCurrency(row.freeCashFlow)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Shareholding Pattern */}
-                <TabsContent value="ownership" className="mt-6">
-                  <Card className="border-slate-800 bg-slate-900/20">
-                    <CardHeader>
-                      <CardTitle className="text-lg text-white font-bold">Quarterly Shareholding (%)</CardTitle>
-                      <CardDescription>{stockData.context.ownership.trendNote}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 font-bold uppercase select-none">
-                            <th className="py-2.5">Quarter</th>
-                            <th className="py-2.5">Promoter %</th>
-                            <th className="py-2.5">Pledged %</th>
-                            <th className="py-2.5">FII %</th>
-                            <th className="py-2.5">DII %</th>
-                            <th className="py-2.5">Public %</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-900">
-                          {stockData.context.ownership.history.map((row) => (
-                            <tr key={row.quarter} className="text-slate-300 hover:bg-slate-900/20">
-                              <td className="py-3 font-semibold text-white">{row.quarter}</td>
-                              <td className="py-3">{row.promoter?.toFixed(2) ?? "—"}%</td>
-                              <td className="py-3 text-amber-500">{row.promoterPledged?.toFixed(2) ?? "0.00"}%</td>
-                              <td className="py-3">{row.fii?.toFixed(2) ?? "—"}%</td>
-                              <td className="py-3">{row.dii?.toFixed(2) ?? "—"}%</td>
-                              <td className="py-3">{row.publicHolding?.toFixed(2) ?? "—"}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                {/* Commentary */}
-                <TabsContent value="commentary" className="mt-6">
-                  <Card className="border-slate-800 bg-slate-900/20">
-                    <CardHeader><CardTitle className="text-sm font-bold text-white">Management commentary summaries</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                      {stockData.context.managementCommentary.length === 0 ? (
-                        <p className="text-xs text-slate-500 italic">No management commentary summaries archived for this stock.</p>
-                      ) : (
-                        stockData.context.managementCommentary.map((comm, idx) => (
-                          <div key={idx} className="border-b border-slate-900 pb-3 last:border-0">
-                            <div className="flex justify-between items-start">
-                              <Badge className="bg-primary/5 text-primary text-[10px] uppercase border-primary/20">{comm.commentaryType}</Badge>
-                              <span className="text-[10px] text-slate-500 font-semibold">{comm.period}</span>
-                            </div>
-                            <p className="text-xs text-slate-300 mt-2 leading-relaxed">{comm.summary}</p>
-                          </div>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Right column (Summary Widgets, Risks, Developments) */}
-            <div className="lg:col-span-1 space-y-8">
-              
-              {/* Qualitative Drivers card */}
-              <Card className="border-primary/10 bg-slate-900/40 backdrop-blur-xl shadow-xl">
-                <CardHeader className="bg-primary/5 border-b border-slate-900 pb-3">
-                  <CardTitle className="text-base text-white font-bold">🎯 Strategic Growth Drivers</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  {stockData.context.growthDrivers.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No strategic growth drivers listed.</p>
-                  ) : (
-                    stockData.context.growthDrivers.map((drv, idx) => (
-                      <div key={idx} className="bg-slate-950/40 border border-slate-900 p-3 rounded space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-xs text-white">{drv.driverType}</span>
-                          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] uppercase">
-                            Score: {drv.importanceScore}/10
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-normal">{drv.description}</p>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Company Risks card */}
-              <Card className="border-rose-500/15 bg-slate-900/40 backdrop-blur-xl shadow-xl">
-                <CardHeader className="bg-rose-950/5 border-b border-slate-900 pb-3">
-                  <CardTitle className="text-base text-white font-bold">⚠️ Risk Assessment</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  {stockData.context.risks.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No risk assessments loaded.</p>
-                  ) : (
-                    stockData.context.risks.map((risk, idx) => {
-                      let sevColor = "bg-slate-800 text-slate-400 border-slate-700/50";
-                      if (risk.severity === "High") sevColor = "bg-rose-950/20 text-rose-400 border-rose-500/25";
-                      if (risk.severity === "Medium") sevColor = "bg-amber-950/20 text-amber-400 border-amber-500/25";
-                      
-                      return (
-                        <div key={idx} className="bg-slate-950/40 border border-slate-900 p-3 rounded space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="font-bold text-xs text-white">{risk.riskType}</span>
-                            <Badge className={`text-[9px] uppercase border ${sevColor}`}>
-                              {risk.severity} Risk
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-slate-400 leading-normal">{risk.description}</p>
-                        </div>
-                      );
-                    })
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Order book details (if applicable) */}
-              {stockData.context.orderBook.length > 0 && (
-                <Card className="border-slate-800 bg-slate-900/40 shadow-xl">
-                  <CardHeader className="border-b border-slate-900 pb-3">
-                    <CardTitle className="text-sm font-bold text-white">📦 Order Book Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-2 text-xs">
-                    {stockData.context.orderBook.map((ob, idx) => (
-                      <div key={idx} className="space-y-1.5 border-b border-slate-900 pb-2 last:border-0">
-                        <div className="flex justify-between font-semibold text-slate-300">
-                          <span>FY {ob.year} Book Value:</span>
-                          <span className="text-white">{fmtCurrency(ob.orderBookValue)}</span>
-                        </div>
-                        <div className="flex justify-between text-slate-400">
-                          <span>Order Inflows:</span>
-                          <span>{fmtCurrency(ob.orderInflows)}</span>
-                        </div>
-                        {ob.bookToBillRatio && (
-                          <div className="flex justify-between text-slate-400">
-                            <span>Book-to-Bill Ratio:</span>
-                            <span>{ob.bookToBillRatio.toFixed(2)}x</span>
-                          </div>
-                        )}
-                        {ob.comments && (
-                          <p className="text-[10px] text-slate-500 leading-relaxed mt-1 italic">"{ob.comments}"</p>
-                        )}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recent Developments list */}
-              <Card className="border-slate-800 bg-slate-900/40 shadow-xl">
-                <CardHeader className="border-b border-slate-900 pb-3">
-                  <CardTitle className="text-base text-white font-bold">📅 Corporate Developments</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                  {stockData.context.developments.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No recent corporate developments recorded.</p>
-                  ) : (
-                    stockData.context.developments.map((dev, idx) => (
-                      <div key={idx} className="border-b border-slate-900 pb-3 last:border-0 space-y-1 text-xs">
-                        <div className="flex justify-between items-start gap-1">
-                          <span className="font-semibold text-white leading-snug">{dev.title}</span>
-                          <Badge className="bg-primary/5 text-primary text-[8px] uppercase flex-shrink-0 border-primary/20">{dev.category}</Badge>
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-normal">{dev.summary}</p>
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1 select-none">
-                          <span>{new Date(dev.announcementDate).toLocaleDateString()}</span>
-                          {dev.sourceUrl && (
-                            <a href={dev.sourceUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold flex items-center">
-                              PDF Filings <ArrowUpRight className="w-2.5 h-2.5 ml-0.5" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-            </div>
-
-          </div>
-        )}
-
       </div>
     </div>
   );

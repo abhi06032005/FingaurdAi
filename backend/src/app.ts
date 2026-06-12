@@ -8,6 +8,7 @@ import adminRoutes from './routes/admin';
 import tradeRoutes from './routes/trades';
 import scamRoutes from './routes/scams';
 import newsRoutes from './routes/newsRoutes';
+import aiReportRoutes from './routes/aiReports';
 import { initCronJobs } from './services/cronService';
 
 const app = express();
@@ -28,8 +29,9 @@ if (process.env.MONGO_URI) {
 app.use(helmet());
 app.use(cors());
 
-// Webhooks
+// Webhooks (supporting both /webhooks/apify and root /apify for compatibility)
 app.use('/webhooks', webhookRoutes);
+app.use('/', webhookRoutes);
 
 app.use(express.json());
 
@@ -38,6 +40,7 @@ app.use('/admin', adminRoutes);
 app.use('/trades', tradeRoutes);
 app.use('/scam-platform', scamRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/ai-reports', aiReportRoutes);
 
 // Global Error Handler (MUST BE LAST)
 app.use(errorHandler);
