@@ -1,11 +1,14 @@
-import express, { Request, Response } from 'express';
-import { generateAndStoreAIReport } from '../services/aiReportService';
-import { CompanyAIReport } from '../models/CompanyAIReport';
-import Stock from '../models/Stock';
-import { authenticate } from '../middlewares/authMiddleware';
-
-const router = express.Router();
-
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const aiReportService_1 = require("../services/aiReportService");
+const CompanyAIReport_1 = require("../models/CompanyAIReport");
+const Stock_1 = __importDefault(require("../models/Stock"));
+const authMiddleware_1 = require("../middlewares/authMiddleware");
+const router = express_1.default.Router();
 /**
  * POST /api/ai-reports/generate
  * Body: { ticker: "RELIANCE", force?: true }
@@ -17,58 +20,52 @@ const router = express.Router();
  * Stores the result in company_ai_reports collection.
  * Responds immediately with 202 and runs generation in background.
  */
-router.post('/generate', authenticate, async (req: Request, res: Response): Promise<any> => {
+router.post('/generate', authMiddleware_1.authenticate, async (req, res) => {
     const { ticker, force } = req.body;
-
     if (!ticker || typeof ticker !== 'string') {
         return res.status(400).json({
             success: false,
             error: 'Missing or invalid "ticker" in request body. Example: { "ticker": "RELIANCE" }',
         });
     }
-
     const symbol = ticker.toUpperCase().trim();
     const forceRegenerate = !!force;
-
     console.log(`[AIReport Route] POST /generate — ticker: ${symbol}, force: ${forceRegenerate}`);
-
     // Respond immediately to avoid HTTP timeouts (generation can take 30-60s)
     res.status(202).json({
         success: true,
         message: `AI report generation started for ${symbol}. Check GET /api/ai-reports/${symbol} once complete.`,
         ticker: symbol,
     });
-
     // Run in background
     (async () => {
         try {
-            const result = await generateAndStoreAIReport(symbol, forceRegenerate);
+            const result = await (0, aiReportService_1.generateAndStoreAIReport)(symbol, forceRegenerate);
             if (result.success) {
                 console.log(`[AIReport Route] ✓ Report generated for ${symbol} (ID: ${result.reportId})`);
-            } else {
+            }
+            else {
                 console.error(`[AIReport Route] ✗ Report generation failed for ${symbol}: ${result.error}`);
             }
-        } catch (err: any) {
+        }
+        catch (err) {
             console.error(`[AIReport Route] ✗ Unhandled error for ${symbol}:`, err.message);
         }
     })();
 });
-
 /**
  * GET /api/ai-reports/:ticker
  *
  * Fetch the precomputed AI report for a company.
  * Returns the full report document from company_ai_reports, along with the raw stock data.
  */
-router.get('/:ticker', async (req: Request, res: Response): Promise<any> => {
-    const symbol = (req.params.ticker as string).toUpperCase().trim();
-
+router.get('/:ticker', async (req, res) => {
+    const symbol = req.params.ticker.toUpperCase().trim();
     try {
         const [report, stock] = await Promise.all([
-            CompanyAIReport.findOne({ ticker: symbol }).lean(),
-            Stock.findOne({ ticker: symbol }).lean()
+            CompanyAIReport_1.CompanyAIReport.findOne({ ticker: symbol }).lean(),
+            Stock_1.default.findOne({ ticker: symbol }).lean()
         ]);
-
         if (!report) {
             return res.status(404).json({
                 success: false,
@@ -77,79 +74,71 @@ router.get('/:ticker', async (req: Request, res: Response): Promise<any> => {
                 stockData: stock || null,
             });
         }
-
         return res.status(200).json({
             success: true,
             ticker: symbol,
             report,
             stockData: stock || null,
         });
-    } catch (err: any) {
+    }
+    catch (err) {
         console.error(`[AIReport Route] GET /${symbol} error:`, err.message);
         return res.status(500).json({ success: false, error: err.message });
     }
 });
-
 /**
  * GET /api/ai-reports
  *
  * List all available AI reports (summary view, no raw_groq_response).
  */
-router.get('/', async (_req: Request, res: Response): Promise<any> => {
+router.get('/', async (_req, res) => {
     try {
-        const reports = await CompanyAIReport.find(
-            {},
-            {
-                ticker: 1,
-                company_name: 1,
-                generated_at: 1,
-                data_sources: 1,
-                'executive_summary.one_liner': 1,
-                'business_quality_score.overall_score': 1,
-                'industry_context.sector': 1,
-                generation_error: 1,
-            }
-        )
+        const reports = await CompanyAIReport_1.CompanyAIReport.find({}, {
+            ticker: 1,
+            company_name: 1,
+            generated_at: 1,
+            data_sources: 1,
+            'executive_summary.one_liner': 1,
+            'business_quality_score.overall_score': 1,
+            'industry_context.sector': 1,
+            generation_error: 1,
+        })
             .sort({ generated_at: -1 })
             .lean();
-
         return res.status(200).json({
             success: true,
             count: reports.length,
             reports,
         });
-    } catch (err: any) {
+    }
+    catch (err) {
         console.error('[AIReport Route] GET / error:', err.message);
         return res.status(500).json({ success: false, error: err.message });
     }
 });
-
 /**
  * DELETE /api/ai-reports/:ticker
  *
  * Delete the cached AI report for a company (to force fresh regeneration).
  */
-router.delete('/:ticker', authenticate, async (req: Request, res: Response): Promise<any> => {
-    const symbol = (req.params.ticker as string).toUpperCase().trim();
-
+router.delete('/:ticker', authMiddleware_1.authenticate, async (req, res) => {
+    const symbol = req.params.ticker.toUpperCase().trim();
     try {
-        const result = await CompanyAIReport.deleteOne({ ticker: symbol });
-
+        const result = await CompanyAIReport_1.CompanyAIReport.deleteOne({ ticker: symbol });
         if (result.deletedCount === 0) {
             return res.status(404).json({
                 success: false,
                 error: `No report found for ${symbol}`,
             });
         }
-
         return res.status(200).json({
             success: true,
             message: `AI report for ${symbol} deleted. Regenerate via POST /api/ai-reports/generate`,
         });
-    } catch (err: any) {
+    }
+    catch (err) {
         console.error(`[AIReport Route] DELETE /${symbol} error:`, err.message);
         return res.status(500).json({ success: false, error: err.message });
     }
 });
-
-export default router;
+exports.default = router;

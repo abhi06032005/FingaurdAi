@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initCronJobs = initCronJobs;
 const node_cron_1 = __importDefault(require("node-cron"));
 const newsService_1 = require("./newsService");
+const payments_1 = require("../routes/payments");
 /**
  * Initializes and starts all scheduled background cron jobs.
  */
@@ -33,15 +34,27 @@ function initCronJobs() {
             console.error('[CronService] Cron database cleanup execution failed:', err.message);
         }
     });
-    // Run cleanup and then sync on startup to clear old data immediately
-    (async () => {
+    // 3. Reconcile pending payments every 5 minutes
+    // Pattern: '*/5 * * * *' (every 5 minutes)
+    node_cron_1.default.schedule('*/5 * * * *', async () => {
+        console.log('[CronService] Executing scheduled payments reconciliation...');
         try {
-            console.log('[CronService] Executing startup cleanup and news sync...');
-            await (0, newsService_1.cleanupStaleNews)();
-            await (0, newsService_1.fetchAndSyncNews)();
+            await (0, payments_1.reconcilePendingPayments)();
         }
         catch (err) {
-            console.error('[CronService] Startup cleanup and news sync failed:', err.message);
+            console.error('[CronService] Cron payments reconciliation failed:', err.message);
+        }
+    });
+    // Run cleanup, sync, and payment reconciliation on startup to ensure fresh data
+    (async () => {
+        try {
+            console.log('[CronService] Executing startup cleanup, news sync, and payment reconciliation...');
+            await (0, newsService_1.cleanupStaleNews)();
+            await (0, newsService_1.fetchAndSyncNews)();
+            await (0, payments_1.reconcilePendingPayments)();
+        }
+        catch (err) {
+            console.error('[CronService] Startup tasks failed:', err.message);
         }
     })();
 }

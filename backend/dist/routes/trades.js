@@ -4,44 +4,43 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const prisma_1 = __importDefault(require("../config/prisma"));
+const Trade_1 = __importDefault(require("../models/Trade"));
 const router = express_1.default.Router();
 // Save new trade
 router.post("/", async (req, res) => {
-    const { userId, ...tradeData } = req.body;
+    const tradeData = req.body;
+    const userId = req.auth?.userId;
     if (!userId) {
-        return res.status(400).json({ error: "Missing Clerk userId in request body" });
+        return res.status(401).json({ error: "Missing authentication token" });
     }
     try {
-        const trade = await prisma_1.default.trade.create({
-            data: {
-                userId,
-                symbol: tradeData.symbol,
-                instrumentType: tradeData.instrumentType,
-                direction: tradeData.direction,
-                entryPrice: parseFloat(tradeData.entryPrice),
-                exitPrice: parseFloat(tradeData.exitPrice),
-                quantity: parseFloat(tradeData.quantity),
-                entryDate: new Date(tradeData.entryDate),
-                exitDate: new Date(tradeData.exitDate),
-                // Plan
-                plannedStopLoss: tradeData.plannedStopLoss ? parseFloat(tradeData.plannedStopLoss) : null,
-                plannedTarget: tradeData.plannedTarget ? parseFloat(tradeData.plannedTarget) : null,
-                // Setup
-                strategy: tradeData.strategy,
-                confidenceScore: parseInt(tradeData.confidenceScore),
-                emotion: tradeData.emotion || null,
-                exitReason: tradeData.exitReason || null,
-                mistakes: tradeData.mistakes || [],
-                // Notes
-                tradeIdea: tradeData.tradeIdea || null,
-                lessonLearned: tradeData.lessonLearned || null,
-                // Options specific
-                optionType: tradeData.optionType || null,
-                strikePrice: tradeData.strikePrice ? parseFloat(tradeData.strikePrice) : null,
-                expiryDate: tradeData.expiryDate ? new Date(tradeData.expiryDate) : null,
-                premiumPaid: tradeData.premiumPaid ? parseFloat(tradeData.premiumPaid) : null,
-            },
+        const trade = await Trade_1.default.create({
+            userId,
+            symbol: tradeData.symbol,
+            instrumentType: tradeData.instrumentType,
+            direction: tradeData.direction,
+            entryPrice: parseFloat(tradeData.entryPrice),
+            exitPrice: parseFloat(tradeData.exitPrice),
+            quantity: parseFloat(tradeData.quantity),
+            entryDate: new Date(tradeData.entryDate),
+            exitDate: new Date(tradeData.exitDate),
+            // Plan
+            plannedStopLoss: tradeData.plannedStopLoss ? parseFloat(tradeData.plannedStopLoss) : null,
+            plannedTarget: tradeData.plannedTarget ? parseFloat(tradeData.plannedTarget) : null,
+            // Setup
+            strategy: tradeData.strategy,
+            confidenceScore: parseInt(tradeData.confidenceScore),
+            emotion: tradeData.emotion || null,
+            exitReason: tradeData.exitReason || null,
+            mistakes: tradeData.mistakes || [],
+            // Notes
+            tradeIdea: tradeData.tradeIdea || null,
+            lessonLearned: tradeData.lessonLearned || null,
+            // Options specific
+            optionType: tradeData.optionType || null,
+            strikePrice: tradeData.strikePrice ? parseFloat(tradeData.strikePrice) : null,
+            expiryDate: tradeData.expiryDate ? new Date(tradeData.expiryDate) : null,
+            premiumPaid: tradeData.premiumPaid ? parseFloat(tradeData.premiumPaid) : null,
         });
         return res.status(201).json({ success: true, data: trade });
     }
@@ -52,19 +51,14 @@ router.post("/", async (req, res) => {
 });
 // Fetch all trades for a user
 router.get("/", async (req, res) => {
-    const userId = req.query.userId;
+    const userId = req.auth?.userId;
     if (!userId) {
-        return res.status(400).json({ error: "Missing Clerk userId in query parameters" });
+        return res.status(401).json({ error: "Missing authentication token" });
     }
     try {
-        const trades = await prisma_1.default.trade.findMany({
-            where: {
-                userId,
-            },
-            orderBy: {
-                entryDate: "desc",
-            },
-        });
+        const trades = await Trade_1.default.find({ userId })
+            .sort({ entryDate: -1 })
+            .lean();
         return res.status(200).json({ success: true, data: trades });
     }
     catch (error) {

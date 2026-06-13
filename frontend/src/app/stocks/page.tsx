@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search, Loader2, AlertTriangle, TrendingUp, TrendingDown,
   Shield, BarChart3, Building2, Leaf, Target, Eye,
@@ -9,6 +11,9 @@ import {
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+import { useUserDb } from "@/context/UserContext";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1237,6 +1242,138 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
   );
 }
 
+const PARSING_STEPS = [
+  "Initializing FinGuard Cognitive Engine...",
+  "Querying consolidated stock metrics database...",
+  "Running quantitative ratios & cash flow algorithms...",
+  "Parsing quarterly balance sheet data points...",
+  "Executing AI neural sentiment modeling on management guidance...",
+  "Analyzing key risk variables & mitigation structures...",
+  "Generating strategic outlook & peer analysis...",
+  "Assembling final investment thesis report...",
+];
+
+const Skeleton = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <div className={`rounded bg-slate-800/60 ${className || ""}`} style={style} />
+);
+
+function AIReportSkeleton() {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div className="space-y-2.5 flex-1">
+          <Skeleton className="h-8 w-1/3 rounded-lg animate-pulse" />
+          <Skeleton className="h-4 w-2/3 rounded-md animate-pulse" />
+        </div>
+        <div className="space-y-2 flex flex-col items-end w-32">
+          <Skeleton className="h-4 w-full rounded animate-pulse" />
+          <Skeleton className="h-3 w-[80%] rounded animate-pulse" />
+        </div>
+      </div>
+
+      {/* Grid of Overview & Quality Score */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        {/* Business Quality Profile Card Skeleton */}
+        <div className="md:col-span-2 space-y-6 bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Skeleton className="w-5 h-5 rounded-full animate-pulse" />
+            <Skeleton className="h-5 w-48 rounded animate-pulse" />
+          </div>
+          <div className="flex items-center gap-5 mb-6">
+            {/* Pulsing Circle */}
+            <div className="w-20 h-20 rounded-full border-[6px] border-slate-800 animate-pulse flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-slate-800/80" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-full rounded animate-pulse" />
+              <Skeleton className="h-3.5 w-[90%] rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-24 rounded animate-pulse" />
+                  <Skeleton className="h-3 w-8 rounded animate-pulse" />
+                </div>
+                <Skeleton className="h-2 w-full rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Overview & Thesis Skeletons */}
+        <div className="md:col-span-3 space-y-6">
+          <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-5 h-5 rounded animate-pulse" />
+              <Skeleton className="h-5 w-40 rounded animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full rounded animate-pulse" />
+              <Skeleton className="h-4 w-[95%] rounded animate-pulse" />
+              <Skeleton className="h-4 w-[90%] rounded animate-pulse" />
+              <Skeleton className="h-4 w-[85%] rounded animate-pulse" />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-5 h-5 rounded animate-pulse" />
+              <Skeleton className="h-5 w-36 rounded animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full rounded animate-pulse" />
+              <Skeleton className="h-4 w-[98%] rounded animate-pulse" />
+              <Skeleton className="h-4 w-[92%] rounded animate-pulse" />
+              <Skeleton className="h-4 w-[80%] rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Financials Skeleton */}
+      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/80 rounded-2xl p-6 space-y-8">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-5 h-5 rounded animate-pulse" />
+          <Skeleton className="h-5 w-44 rounded animate-pulse" />
+        </div>
+
+        {/* Large Chart Area Skeleton */}
+        <div className="h-64 border border-slate-800/60 bg-slate-950/40 rounded-2xl flex items-end justify-between p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-800/10 to-transparent -translate-x-full animate-shimmer" />
+          {/* Fake chart bars */}
+          {Array.from({ length: 12 }).map((_, i) => (
+            <Skeleton
+              key={i}
+              className="w-[6%] rounded-t-md animate-pulse"
+              style={{
+                height: `${20 + Math.sin(i * 0.8) * 40 + Math.random() * 20}%`,
+                opacity: 0.4 + (i / 12) * 0.4
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Financial commentary grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-5 space-y-3">
+              <Skeleton className="h-3 w-24 rounded animate-pulse" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-full rounded animate-pulse" />
+                <Skeleton className="h-3.5 w-[90%] rounded animate-pulse" />
+                <Skeleton className="h-3.5 w-[75%] rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -1248,11 +1385,98 @@ export default function StocksPage() {
   const [report, setReport] = useState<AIReport | null>(null);
   const [stockData, setStockData] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [generating, setGenerating] = useState(false);
+
+  // States for premium multi-phase loader
+  const [loadingPhase, setLoadingPhase] = useState<"none" | "parsing" | "skeleton">("none");
+  const [parsingStep, setParsingStep] = useState(0);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [tempReportData, setTempReportData] = useState<{ report: AIReport; stockData: any } | null>(null);
+  const [tempStatus, setTempStatus] = useState<{ isError: boolean; isNotFound: boolean; errorMsg?: string } | null>(null);
+
+  // States for trial check
+  const router = useRouter();
+  const { dbUser, incrementReportsUsed } = useUserDb();
+  const [showLimitReachedModal, setShowLimitReachedModal] = useState(false);
+  const reportsUsed = dbUser?.reportsUsed || 0;
+
+
+  useEffect(() => {
+    if (viewState !== "loading") {
+      setLoadingPhase("none");
+      return;
+    }
+
+    setLoadingPhase("parsing");
+    setParsingStep(0);
+    setMinTimeElapsed(false);
+
+    // AI methods step interval: 8 steps, 320ms each = 2.56 seconds parsing time
+    const interval = setInterval(() => {
+      setParsingStep((prev) => {
+        if (prev < PARSING_STEPS.length - 1) {
+          return prev + 1;
+        } else {
+          clearInterval(interval);
+          setLoadingPhase("skeleton");
+          return prev;
+        }
+      });
+    }, 320);
+
+    // Total load time requirement: 4-5 seconds. Let's do 4.6 seconds total minimum.
+    // That means at 4.6s, minTimeElapsed becomes true.
+    const timer = setTimeout(() => {
+      setMinTimeElapsed(true);
+    }, 4600);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timer);
+    };
+  }, [viewState]);
+
+  useEffect(() => {
+    if (viewState !== "loading" || !minTimeElapsed) return;
+
+    if (tempReportData) {
+      setReport(tempReportData.report);
+      setStockData(tempReportData.stockData);
+      setViewState("report");
+      setTempReportData(null);
+      setTempStatus(null);
+    } else if (tempStatus) {
+      if (tempStatus.isNotFound) {
+        setViewState("not-found");
+      } else if (tempStatus.isError) {
+        setErrorMsg(tempStatus.errorMsg || "An error occurred.");
+        setViewState("error");
+      }
+      setTempReportData(null);
+      setTempStatus(null);
+    }
+  }, [minTimeElapsed, tempReportData, tempStatus, viewState]);
 
   const fetchReport = async (ticker: string) => {
     const t = ticker.toUpperCase().trim();
     if (!t) return;
+    
+    // Check trial limit
+    if (dbUser) {
+      if (dbUser.plan === "FREE" && dbUser.reportsUsed >= 1) {
+        setShowLimitReachedModal(true);
+        return;
+      }
+      if (dbUser.plan === "STANDARD" && dbUser.reportsUsed >= 10) {
+        setShowLimitReachedModal(true);
+        return;
+      }
+    }
+
+
+    // Reset loader data and start loading view state
+    setTempReportData(null);
+    setTempStatus(null);
+    setMinTimeElapsed(false);
     setViewState("loading");
     setReport(null);
     setStockData(null);
@@ -1263,34 +1487,21 @@ export default function StocksPage() {
       const data = await res.json();
 
       if (res.ok && data.success && data.report?.executive_summary) {
-        setReport(data.report as AIReport);
-        setStockData(data.stockData || null);
-        setViewState("report");
+        setTempReportData({
+          report: data.report as AIReport,
+          stockData: data.stockData || null
+        });
+        // Increment reports used in Neon DB
+        await incrementReportsUsed();
       } else {
-        setViewState("not-found");
+        setTempStatus({ isError: false, isNotFound: true });
       }
     } catch {
-      setErrorMsg("Cannot connect to backend. Make sure the server is running.");
-      setViewState("error");
-    }
-  };
-
-  const triggerGenerate = async (ticker: string) => {
-    const t = ticker.toUpperCase().trim();
-    setGenerating(true);
-    try {
-      await fetch(`${API_BASE}/api/ai-reports/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: t }),
+      setTempStatus({
+        isError: true,
+        isNotFound: false,
+        errorMsg: "Cannot connect to backend. Make sure the server is running."
       });
-      // Poll after 60s
-      setTimeout(() => {
-        setGenerating(false);
-        fetchReport(t);
-      }, 60000);
-    } catch {
-      setGenerating(false);
     }
   };
 
@@ -1311,7 +1522,7 @@ export default function StocksPage() {
             Stock Intelligence
           </h1>
           <p className="text-slate-400 text-lg max-w-xl mx-auto">
-            Type an NSE ticker to get a pre-computed, analyst-grade AI research report.
+            Analyze Indian stock fundamentals instantly with analyst-grade AI models.
           </p>
           <form onSubmit={handleSubmit} className="flex gap-2 max-w-lg mx-auto">
             <div className="relative flex-1">
@@ -1338,12 +1549,113 @@ export default function StocksPage() {
 
         {/* Loading */}
         {viewState === "loading" && (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <Brain className="w-5 h-5 text-indigo-400 absolute inset-0 m-auto" />
-            </div>
-            <p className="text-slate-400 text-sm animate-pulse">Fetching AI report…</p>
+          <div className="w-full">
+            <style>{`
+              @keyframes shimmer {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(100%); }
+              }
+              .animate-shimmer {
+                animation: shimmer 2.5s infinite linear;
+              }
+            `}</style>
+            {loadingPhase === "parsing" ? (
+              <div className="max-w-xl mx-auto py-12 px-4 animate-in fade-in duration-500">
+                <div className="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
+                  {/* Background glows */}
+                  <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl" />
+                  <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
+
+                  {/* Header of card */}
+                  <div className="flex items-center justify-between border-b border-slate-800/60 pb-6 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                        <Brain className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-white text-base tracking-tight">FinGuard AI Engine</h3>
+                        <p className="text-xs text-slate-400 font-semibold">Cognitive Broker v3.5 • Running</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                      Parsing Data
+                    </div>
+                  </div>
+
+                  {/* Steps List */}
+                  <div className="space-y-4">
+                    {PARSING_STEPS.map((step, idx) => {
+                      const isCompleted = idx < parsingStep;
+                      const isActive = idx === parsingStep;
+                      const isPending = idx > parsingStep;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex items-start gap-4 transition-all duration-300 ${
+                            isCompleted
+                              ? "text-slate-300"
+                              : isActive
+                              ? "text-indigo-400 scale-[1.01]"
+                              : "text-slate-600 opacity-40"
+                          }`}
+                        >
+                          <div className="mt-0.5 flex-shrink-0">
+                            {isCompleted ? (
+                              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </div>
+                            ) : isActive ? (
+                              <div className="flex items-center justify-center w-5 h-5">
+                                <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-800 text-slate-600 text-[10px] font-extrabold">
+                                {idx + 1}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm leading-relaxed ${isActive ? "font-bold" : "font-medium"}`}>
+                              {step}
+                            </span>
+                            {isActive && (
+                              <span className="inline-block w-1.5 h-3.5 ml-1 bg-indigo-500 animate-pulse" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-2">
+                    <div className="flex justify-between text-xs font-black tracking-wider text-slate-400 uppercase">
+                      <span>Neural Mapping Progress</span>
+                      <span>{Math.round((parsingStep / (PARSING_STEPS.length - 1)) * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-800/80 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${(parsingStep / (PARSING_STEPS.length - 1)) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="max-w-6xl mx-auto flex items-center justify-between bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-4 text-xs font-bold text-indigo-300 animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>AI parsing complete. Integrating cognitive models into data panels...</span>
+                  </div>
+                  <span className="text-slate-500 font-medium">Stage 2 of 2</span>
+                </div>
+                <AIReportSkeleton />
+              </div>
+            )}
           </div>
         )}
 
@@ -1353,24 +1665,8 @@ export default function StocksPage() {
             <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
             <h3 className="text-xl font-bold text-white">No Report Found</h3>
             <p className="text-slate-400 text-sm">
-              No AI report exists for <strong className="text-white">{search.toUpperCase()}</strong> yet.
-              {generating
-                ? " Generating now — this takes ~60 seconds. The page will refresh automatically."
-                : " Click below to generate one (requires stock data to be scraped first)."}
+              No AI report exists for <strong className="text-white">{search.toUpperCase()}</strong> yet. This ticker may not be onboarded, or the index operation might have failed. Please contact the administrator to initiate ingestion for this stock.
             </p>
-            {!generating ? (
-              <button
-                onClick={() => triggerGenerate(search)}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-sm transition-all inline-flex items-center gap-2"
-              >
-                <Zap className="w-4 h-4" /> Generate Report
-              </button>
-            ) : (
-              <div className="flex items-center justify-center gap-2 text-indigo-400 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Generating… auto-refreshing in ~60s
-              </div>
-            )}
           </div>
         )}
 
@@ -1389,25 +1685,90 @@ export default function StocksPage() {
 
         {/* Idle state */}
         {viewState === "idle" && (
-          <div className="py-20 text-center space-y-3">
+          <div className="py-20 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto">
-              <BarChart3 className="w-7 h-7 text-slate-600" />
+              {reportsUsed >= 1 ? (
+                <AlertCircle className="w-7 h-7 text-rose-500" />
+              ) : (
+                <BarChart3 className="w-7 h-7 text-slate-600" />
+              )}
             </div>
-            <p className="text-slate-500 text-sm">Enter a ticker above to load its AI report.</p>
-            <div className="flex flex-wrap gap-2 justify-center mt-4">
-              {["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setSearch(t); fetchReport(t); }}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 border border-slate-800 rounded-full hover:border-indigo-500/40 hover:text-indigo-300 transition-all"
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            
+            {reportsUsed >= 1 ? (
+              <div className="space-y-3 max-w-sm mx-auto">
+                <span className="px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold uppercase tracking-wider">
+                  Free Trial Expired
+                </span>
+                <p className="text-slate-400 text-sm font-medium">
+                  You have used your 1 free AI report. Upgrade to continue analyzing stock financials.
+                </p>
+                <Link href="/plans" className="inline-block px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer">
+                  Upgrade Subscription
+                </Link>
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-500 text-sm">Enter a ticker above to load its AI report.</p>
+                <div className="flex flex-wrap gap-2 justify-center mt-4">
+                  {["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => { setSearch(t); fetchReport(t); }}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-400 border border-slate-800 rounded-full hover:border-indigo-500/40 hover:text-indigo-300 transition-all"
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {/* Trial Over Limit Modal */}
+      {showLimitReachedModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Background Glow */}
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col items-center text-center space-y-5">
+              <div className="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xl font-black text-white tracking-tight">
+                  {dbUser?.plan === "STANDARD" ? "Standard Limit Reached" : "Free Trial Over"}
+                </h3>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                  {dbUser?.plan === "STANDARD"
+                    ? "Your 10-report monthly limit has been used. Please upgrade to Premium Pro for unlimited reports."
+                    : "Your 1-report free trial has been used. Please select one of our premium subscription tiers to unlock unlimited AI Stock Intelligence features."
+                  }
+                </p>
+              </div>
+
+
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => router.push("/plans")}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  View Pricing Plans
+                </button>
+                <button
+                  onClick={() => setShowLimitReachedModal(false)}
+                  className="w-full py-3 text-slate-400 hover:text-white font-bold rounded-2xl text-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

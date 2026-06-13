@@ -4,7 +4,9 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-import { ClerkProvider } from '@clerk/nextjs'
+import { ClerkProvider } from '@clerk/nextjs';
+import { UserProvider } from "@/context/UserContext";
+
 
 const inter = Inter({
   variable: "--font-sans",
@@ -38,12 +40,15 @@ export default function RootLayout({
         </head>
         <body className={`${inter.variable} font-sans antialiased min-h-screen flex flex-col`}>
           <QueryProvider>
-            <Navbar />
-            <main className="flex-1 bg-transparent">
-              {children}
-            </main>
-            <Footer />
+            <UserProvider>
+              <Navbar />
+              <main className="flex-1 bg-transparent">
+                {children}
+              </main>
+              <Footer />
+            </UserProvider>
           </QueryProvider>
+
         </body>
       </html>
     </ClerkProvider>

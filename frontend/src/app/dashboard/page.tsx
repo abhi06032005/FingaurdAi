@@ -1,19 +1,136 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bookmark, ShieldAlert, Calendar, TrendingUp } from "lucide-react";
+import { Bookmark, ShieldAlert, Calendar, TrendingUp, CreditCard, ShieldCheck, Sparkles, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { useUserDb } from "@/context/UserContext";
+import Link from "next/link";
 
 export default function DashboardPage() {
+  const { dbUser, loadingDbUser } = useUserDb();
+
+  const calculateDaysRemaining = (expiryDate: string | null) => {
+    if (!expiryDate) return 0;
+    const diff = new Date(expiryDate).getTime() - new Date().getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
+  };
+
+  const daysLeft = dbUser ? calculateDaysRemaining(dbUser.planExpiryDate) : 0;
+
   return (
     <div className="fg-shell min-h-[calc(100vh-4rem)] px-4 py-10">
       <div className="mx-auto max-w-6xl space-y-8">
-        <div className="fg-panel rounded-lg p-6 md:p-8">
-          <div aria-hidden className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
-            <Bookmark className="h-5 w-5" />
+        
+        {/* Top Header Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="fg-panel rounded-lg p-6 md:p-8 md:col-span-2 flex flex-col justify-between border border-border/20 bg-[#0c0e17]/60">
+            <div>
+              <div aria-hidden className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+                <Bookmark className="h-5 w-5" />
+              </div>
+              <h1 className="fg-title text-3xl md:text-4xl">My Dashboard</h1>
+              <p className="mt-3 max-w-2xl text-muted-foreground">
+                Manage your saved research, track scam reports, and view upcoming events.
+              </p>
+            </div>
           </div>
-          <h1 className="fg-title text-3xl md:text-4xl">My Dashboard</h1>
-          <p className="mt-3 max-w-2xl text-muted-foreground">
-            Manage your saved research, track scam reports, and view upcoming events.
-          </p>
+
+          {/* Dynamic Plan Card */}
+          <div className="fg-panel rounded-lg p-6 border border-border/20 bg-[#0c0e17]/60 flex flex-col justify-between relative overflow-hidden">
+            {loadingDbUser ? (
+              <div className="flex h-full items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+              </div>
+            ) : !dbUser ? (
+              <div className="space-y-4">
+                <h3 className="font-bold text-white text-lg">Access Denied</h3>
+                <p className="text-xs text-muted-foreground">Please sign in to view your account subscription plan details.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col h-full justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Account Tier</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                      dbUser.plan === "PREMIUM"
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        : dbUser.plan === "STANDARD"
+                        ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-400"
+                        : "bg-slate-800/40 border-slate-700 text-slate-400"
+                    }`}>
+                      {dbUser.plan} Plan
+                    </span>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg border border-slate-800 bg-slate-900/60 flex items-center justify-center text-slate-300">
+                      <CreditCard className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400">Current Plan Status</p>
+                      <h4 className="text-sm font-black text-white">
+                        {dbUser.plan === "FREE" ? "Free Trial Active" : "Subscribed"}
+                      </h4>
+                    </div>
+                  </div>
+
+                  {dbUser.plan !== "FREE" && (
+                    <div className="mt-4 space-y-2 text-xs font-semibold text-slate-300">
+                      <div className="flex justify-between">
+                        <span>Activated:</span>
+                        <span className="text-white">
+                          {dbUser.planStartDate ? new Date(dbUser.planStartDate).toLocaleDateString() : "N/A"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Expires:</span>
+                        <span className="text-white">
+                          {dbUser.planExpiryDate ? new Date(dbUser.planExpiryDate).toLocaleDateString() : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  {dbUser.plan === "FREE" ? (
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-bold text-slate-400 leading-normal">
+                        Upgrade to Standard or Premium to run more AI stock analysis reports.
+                      </p>
+                      <Link href="/plans" className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1">
+                        Upgrade Plan <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className={`px-3 py-2 rounded-xl border text-[11px] font-bold text-center flex items-center justify-center gap-1.5 ${
+                        daysLeft <= 5
+                          ? "bg-red-500/10 border-red-500/20 text-red-400"
+                          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      }`}>
+                        {daysLeft <= 5 ? (
+                          <>
+                            <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+                            <span>{daysLeft} Days Remaining (Renew Soon)</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                            <span>{daysLeft} Days Remaining</span>
+                          </>
+                        )}
+                      </div>
+                      <Link href="/plans" className="w-full py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-1">
+                        Change Plan
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <Tabs defaultValue="analyses" className="w-full">

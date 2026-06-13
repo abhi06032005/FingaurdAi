@@ -28,10 +28,6 @@ const faqs = [
     answer: "Our stock analyzer retrieves corporate records, balance sheets, and key ratios directly from verified sources like Screener.in and NSE India. Our AI models parse the data to extract management sentiment, financial health, segments, and risks, presenting a simplified 10-point context score."
   },
   {
-    question: "Can the Scam Scanner detect WhatsApp and Telegram pump-and-dump tips?",
-    answer: "Yes. The scanner uses natural language processing trained on known Indian investment fraud patterns. It checks for red flags like guaranteed high returns, pressure tactics, fake SEBI registrations, and requests to join private groups, assigning a dynamic Risk Level."
-  },
-  {
     question: "Where is my trading journal data saved?",
     answer: "Your trading journal is securely stored in a Neon PostgreSQL database using Clerk authentication. It remains completely private to you, allowing you to log entries, view Zerodha-style profit calendars, and export prompts for AI-driven coaching."
   },
@@ -47,7 +43,7 @@ const testimonials = [
     name: "Sunita Sharma",
     role: "Retail Investor",
     experience: "3+ years investing",
-    quote: "FinGuard AI has completely changed how I look at WhatsApp tips. Being able to scan a message and immediately see its red flags has saved me from at least two pump-and-dump traps this year.",
+    quote: "The AI Stock Analyzer saves me hours of manual reading. I can immediately see a simplified dashboard of strengths, segment growths, and financial risks for any NSE ticker.",
     avatarBg: "bg-teal-500/10 text-teal-400"
   },
   {
@@ -83,7 +79,7 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-[#050506] text-foreground min-h-screen overflow-x-hidden font-sans selection:bg-primary/30 selection:text-white">
+    <div className="home-page-bg text-foreground min-h-screen overflow-x-hidden font-sans selection:bg-primary/30 selection:text-white">
       
       {/* Glow Backdrop Overlays */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[600px] overflow-hidden pointer-events-none z-0">

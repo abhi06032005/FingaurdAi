@@ -55,7 +55,7 @@ interface Trade {
 }
 
 export default function AnalysisPage() {
-  const { userId, isLoaded } = useAuth();
+  const { userId, isLoaded, getToken } = useAuth();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,12 @@ export default function AnalysisPage() {
     const fetchTrades = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trades?userId=${userId}`);
+        const token = await getToken();
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trades`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
         const result = await response.json();
         
         if (response.ok) {

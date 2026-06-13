@@ -32,7 +32,7 @@ import { Save, SaveAll, X } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 
 export function TradeForm() {
-  const { userId } = useAuth();
+  const { userId, getToken } = useAuth();
   const form = useForm<TradeFormValues>({
     resolver: zodResolver(tradeSchema as any),
     defaultValues: {
@@ -49,15 +49,14 @@ export function TradeForm() {
     }
     
     try {
+      const token = await getToken();
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/trades`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...data,
-          userId,
-        }),
+        body: JSON.stringify(data),
       });
       
       const result = await response.json();

@@ -1,7 +1,22 @@
-import { NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import type { NextRequest } from "next/server";
 
-export function proxy() {
-  return NextResponse.next();
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/sign-up(.*)"
+]);
+
+const clerk = clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
+
+export default clerk;
+
+export function proxy(request: NextRequest, event: any) {
+  return clerk(request, event);
 }
 
 export const config = {

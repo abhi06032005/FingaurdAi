@@ -56,6 +56,7 @@ const CATEGORIES = {
     'global': 'https://news.google.com/rss/search?q=Global+Stock+Market',
     'earnings': 'https://news.google.com/rss/search?q=India+Quarterly+Results'
 };
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36';
 /**
  * Strips the publication source suffix from the title if present
  */
@@ -73,24 +74,109 @@ function cleanArticleTitle(title, source) {
     return cleanTitle.trim();
 }
 /**
- * Fetches the Open Graph image from the target article page
+ * Resolves a Google News redirect URL to the actual publisher article URL
+ * using Google's internal batchexecute/Fbv4je RPC endpoint.
+ *
+ * Steps:
+ * 1. Fetch the Google News article page to extract the c-wiz[data-p] attribute
+ * 2. Parse data-p to build the garturlreq payload
+ * 3. POST to /_/DotsSplashUi/data/batchexecute to get the real URL
  */
-async function fetchArticleImage(link) {
-    if (!link)
+async function resolveGoogleNewsUrl(googleNewsLink) {
+    try {
+        // Step 1: Fetch the redirect page to extract session params
+        const pageRes = await axios_1.default.get(googleNewsLink, {
+            headers: {
+                'User-Agent': BROWSER_UA,
+                'Accept-Language': 'en-US,en;q=0.9',
+            },
+            timeout: 8000,
+            maxRedirects: 5,
+        });
+        const $ = cheerio.load(pageRes.data);
+        const cwiz = $('c-wiz[data-p]');
+        if (!cwiz.length) {
+            return null;
+        }
+        const dataP = cwiz.attr('data-p');
+        if (!dataP)
+            return null;
+        // Step 2: Parse data-p — replace the %.@. prefix with ["garturlreq", to form valid JSON
+        const obj = JSON.parse(dataP.replace('%.@.', '["garturlreq",'));
+        // Build payload: all elements except the last 6, then append the last 2
+        const slicedObj = [...obj.slice(0, -6), ...obj.slice(-2)];
+        const payload = {
+            'f.req': JSON.stringify([[
+                    ['Fbv4je', JSON.stringify(slicedObj), null, 'generic']
+                ]])
+        };
+        // Step 3: POST to batchexecute
+        const batchRes = await axios_1.default.post('https://news.google.com/_/DotsSplashUi/data/batchexecute', new URLSearchParams(payload).toString(), {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'User-Agent': BROWSER_UA,
+            },
+            timeout: 10000,
+        });
+        // Step 4: Parse the garturlres response
+        const cleanedText = batchRes.data.replace(")]}'", "");
+        const jsonData = JSON.parse(cleanedText);
+        if (jsonData[0]?.[2]) {
+            const articleData = JSON.parse(jsonData[0][2]);
+            // articleData[1] is the resolved publisher URL
+            return articleData[1] || null;
+        }
+        return null;
+    }
+    catch (err) {
+        // Fail silently — image will use fallback
+        return null;
+    }
+}
+/**
+ * Fetches the Open Graph image from the actual publisher article page.
+ * Tries og:image, twitter:image, and LD+JSON structured data.
+ */
+async function fetchArticleImage(articleUrl) {
+    if (!articleUrl)
         return '';
     try {
-        const res = await axios_1.default.get(link, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            },
-            timeout: 5000 // 5 seconds timeout to keep sync fast
+        const res = await axios_1.default.get(articleUrl, {
+            headers: { 'User-Agent': BROWSER_UA },
+            timeout: 8000,
+            maxRedirects: 5,
         });
         const $ = cheerio.load(res.data);
-        const ogImage = $('meta[property="og:image"]').attr('content') ||
-            $('meta[name="twitter:image"]').attr('content') ||
-            '';
-        if (ogImage && (ogImage.startsWith('http://') || ogImage.startsWith('https://'))) {
-            return ogImage;
+        const candidates = [
+            $('meta[property="og:image"]').attr('content'),
+            $('meta[name="twitter:image"]').attr('content'),
+            $('meta[name="twitter:image:src"]').attr('content'),
+        ];
+        // Try LD+JSON structured data for image
+        $('script[type="application/ld+json"]').each((_, el) => {
+            try {
+                const json = JSON.parse($(el).html() || '{}');
+                if (json.image) {
+                    if (typeof json.image === 'string')
+                        candidates.push(json.image);
+                    else if (json.image.url)
+                        candidates.push(json.image.url);
+                    else if (Array.isArray(json.image) && json.image.length > 0) {
+                        const first = json.image[0];
+                        candidates.push(typeof first === 'string' ? first : first?.url);
+                    }
+                }
+                if (json.thumbnailUrl)
+                    candidates.push(json.thumbnailUrl);
+            }
+            catch (e) {
+                // Ignore malformed LD+JSON
+            }
+        });
+        for (const img of candidates) {
+            if (img && (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('//'))) {
+                return img.startsWith('//') ? 'https:' + img : img;
+            }
         }
         return '';
     }
@@ -100,13 +186,25 @@ async function fetchArticleImage(link) {
     }
 }
 /**
+ * Full pipeline: resolves Google News link → actual article URL → og:image
+ */
+async function resolveArticleImage(googleNewsLink) {
+    // Step 1: Resolve the real article URL via batchexecute
+    const realUrl = await resolveGoogleNewsUrl(googleNewsLink);
+    if (!realUrl) {
+        return '';
+    }
+    // Step 2: Fetch the og:image from the real article page
+    return await fetchArticleImage(realUrl);
+}
+/**
  * Fetches RSS feeds for all categories, parses, removes duplicates, and saves to MongoDB.
  * Ignores articles older than 48 hours.
  */
 async function fetchAndSyncNews() {
     console.log('[NewsService] Starting news sync from Google News RSS feeds...');
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    const limit = (0, p_limit_1.default)(5); // Fetch 5 article images concurrently
+    const limit = (0, p_limit_1.default)(3); // Throttle concurrent requests to avoid Google rate-limiting
     for (const [category, url] of Object.entries(CATEGORIES)) {
         try {
             console.log(`[NewsService] Fetching feed for category "${category}" from: ${url}`);
@@ -122,10 +220,10 @@ async function fetchAndSyncNews() {
                 }
                 return true;
             });
-            console.log(`[NewsService] Category "${category}" has ${validItems.length} recent articles. Resolving image metadata concurrently...`);
-            // Fetch images for all articles concurrently (throttled by p-limit)
+            console.log(`[NewsService] Category "${category}" has ${validItems.length} recent articles. Resolving real article URLs and images...`);
+            // Resolve real article URLs and images concurrently (throttled by p-limit)
             const resolvedArticles = await Promise.all(validItems.map((item) => limit(async () => {
-                const imageUrl = await fetchArticleImage(item.link || '');
+                const imageUrl = await resolveArticleImage(item.link || '');
                 return { item, imageUrl };
             })));
             for (const { item, imageUrl } of resolvedArticles) {
@@ -139,12 +237,11 @@ async function fetchAndSyncNews() {
                     description: description,
                     source: sourceName,
                     link: item.link,
-                    image: imageUrl, // Extracted real-time image URL
+                    image: imageUrl, // Real publisher og:image
                     category: category,
                     publishedAt: publishedAt,
                     createdAt: new Date()
-                }, { upsert: true, returnDocument: 'after' } // Replaced deprecated 'new: true' with 'returnDocument'
-                );
+                }, { upsert: true, returnDocument: 'after' });
                 upsertCount++;
             }
             console.log(`[NewsService] Category "${category}" synced successfully: ${upsertCount} upserted, ${skipCount} skipped (older than 48h).`);

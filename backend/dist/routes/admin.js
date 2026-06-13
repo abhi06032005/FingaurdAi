@@ -20,7 +20,7 @@ router.post('/scrape', async (req, res) => {
     try {
         const client = new apify_client_1.ApifyClient({ token: APIFY_API_TOKEN });
         const formattedTicker = ticker.toUpperCase();
-        const url = `https://www.screener.in/company/${formattedTicker}/`;
+        const url = `https://www.screener.in/company/${formattedTicker}/consolidated/`;
         console.log(`[Apify] Triggering screener-in actor for ${formattedTicker} (${url})...`);
         // Start the actor run asynchronously
         const run = await client.actor('shashwattrivedi/screener-in').start({

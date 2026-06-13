@@ -5,6 +5,14 @@ import { processCompany } from '../services/pdfAnnualReport';
 
 const router = express.Router();
 
+// NEVER expose admin routes in production
+router.use((req: Request, res: Response, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).send('Not Found');
+  }
+  next();
+});
+
 router.post('/scrape', async (req: Request, res: Response): Promise<any> => {
   const { ticker } = req.body;
   if (!ticker) {
@@ -19,7 +27,7 @@ router.post('/scrape', async (req: Request, res: Response): Promise<any> => {
   try {
     const client = new ApifyClient({ token: APIFY_API_TOKEN });
     const formattedTicker = ticker.toUpperCase();
-    const url = `https://www.screener.in/company/${formattedTicker}/`;
+    const url = `https://www.screener.in/company/${formattedTicker}/consolidated/`;
 
     console.log(`[Apify] Triggering screener-in actor for ${formattedTicker} (${url})...`);
 

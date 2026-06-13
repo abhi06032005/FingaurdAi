@@ -6,10 +6,14 @@ import { errorHandler } from './middlewares/errorHandler';
 import webhookRoutes from './routes/webhooks';
 import adminRoutes from './routes/admin';
 import tradeRoutes from './routes/trades';
-import scamRoutes from './routes/scams';
 import newsRoutes from './routes/newsRoutes';
 import aiReportRoutes from './routes/aiReports';
+import stocksRoutes from './routes/stocksRoutes';
+import userRoutes from './routes/users';
+import paymentRoutes from './routes/payments';
 import { initCronJobs } from './services/cronService';
+import rateLimit from 'express-rate-limit';
+import { authenticate } from './middlewares/authMiddleware';
 
 const app = express();
 
@@ -27,7 +31,20 @@ if (process.env.MONGO_URI) {
 }
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
+}));
+
+// Global Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  standardHeaders: 'draft-7', // draft-6: `RateLimit-*` headers; draft-7: combined `RateLimit` header
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: { success: false, error: 'Too many requests, please try again later.' },
+});
+app.use(limiter);
 
 // Webhooks (supporting both /webhooks/apify and root /apify for compatibility)
 app.use('/webhooks', webhookRoutes);
@@ -35,12 +52,15 @@ app.use('/', webhookRoutes);
 
 app.use(express.json());
 
-// Mount admin routes
+// Mount protected routes with authenticate middleware
 app.use('/admin', adminRoutes);
-app.use('/trades', tradeRoutes);
-app.use('/scam-platform', scamRoutes);
-app.use('/api/news', newsRoutes);
+app.use('/trades', authenticate, tradeRoutes);
+app.use('/api/news', newsRoutes); // Public or protect if needed
 app.use('/api/ai-reports', aiReportRoutes);
+app.use('/api/stocks', stocksRoutes); // Usually public
+app.use('/api/users', authenticate, userRoutes);
+app.use('/api/payments', authenticate, paymentRoutes);
+
 
 // Global Error Handler (MUST BE LAST)
 app.use(errorHandler);

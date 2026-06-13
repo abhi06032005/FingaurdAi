@@ -153,41 +153,87 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
     );
   };
 
+  // Helper to get latest non-null value for a metric from a rows array
+  const getLatestMetric = (rows: any[] | undefined, metricName: string): number | null => {
+    if (!Array.isArray(rows)) return null;
+    const row = rows.find((r: any) => r.Metric === metricName);
+    if (!row) return null;
+    const periods = Object.keys(row).filter(k => k !== 'Metric' && k !== '_id' && k !== '__v');
+    for (let i = periods.length - 1; i >= 0; i--) {
+      const v = row[periods[i]];
+      if (v !== null && v !== undefined) return typeof v === 'number' ? v : parseFloat(String(v));
+    }
+    return null;
+  };
+
+  // P&L rows (handle both plain array and object with annual_data)
+  const pnlRows: any[] = Array.isArray(stockData.profit_and_loss)
+    ? stockData.profit_and_loss
+    : (stockData.profit_and_loss?.annual_data ?? []);
+
+  const latestSales      = getLatestMetric(pnlRows, 'Sales');
+  const latestNetProfit  = getLatestMetric(pnlRows, 'Net Profit');
+  const latestOPM        = getLatestMetric(pnlRows, 'OPM %');
+  const latestEPS        = getLatestMetric(pnlRows, 'EPS in Rs');
+  const latestDivPayout  = getLatestMetric(pnlRows, 'Dividend Payout %');
+
+  // Balance sheet totals
+  const bsRows: any[] = Array.isArray(stockData.balance_sheet) ? stockData.balance_sheet : [];
+  const latestEquity     = getLatestMetric(bsRows, 'Equity Capital');
+  const latestReserves   = getLatestMetric(bsRows, 'Reserves');
+  const netWorth = (latestEquity !== null && latestReserves !== null)
+    ? latestEquity + latestReserves : null;
+
+  // Free Cash Flow
+  const cfRows: any[] = Array.isArray(stockData.cash_flow) ? stockData.cash_flow : [];
+  const latestFCF = getLatestMetric(cfRows, 'Free Cash Flow');
+
   // Extract latest ROCE from ratios table
   const roceRow = stockData.ratios?.find((r: any) => (r.Metric || r['']) === 'ROCE %');
-  let roceValue = "N/A";
+  let roceValue = 'N/A';
   if (roceRow) {
     const periods = Object.keys(roceRow).filter(k => k !== 'Metric' && k !== '' && k !== '_id');
     const latestPeriod = periods[periods.length - 1];
     if (latestPeriod && roceRow[latestPeriod] !== null) {
-      roceValue = typeof roceRow[latestPeriod] === 'number' 
-        ? roceRow[latestPeriod].toFixed(1) 
+      roceValue = typeof roceRow[latestPeriod] === 'number'
+        ? roceRow[latestPeriod].toFixed(1)
         : roceRow[latestPeriod].toString();
     }
   }
 
-  // Extract latest ROE from CAGR Return on Equity
+  // Extract latest ROE
   const roeData = stockData.profit_and_loss?.["Return on Equity"];
-  let roeValue = "N/A";
+  let roeValue = 'N/A';
   if (roeData && Array.isArray(roeData)) {
     const lastYearRow = roeData.find((r: any) => Object.keys(r)[0]?.toLowerCase().includes('last year'));
     if (lastYearRow) {
       const key = Object.keys(lastYearRow)[0];
       const val = lastYearRow[key];
-      roeValue = typeof val === 'number' ? val.toFixed(1) : (val?.toString() || "N/A");
+      roeValue = typeof val === 'number' ? val.toFixed(1) : (val?.toString() || 'N/A');
     }
   }
 
+  // Sales CAGR 3Y
+  const salesCagrArr = stockData.profit_and_loss?.['Compounded Sales Growth'];
+  let salesCagr3Y = 'N/A';
+  if (Array.isArray(salesCagrArr)) {
+    const row = salesCagrArr.find((r: any) => String(Object.keys(r)[0]).includes('3'));
+    if (row) { const v = Object.values(row)[0]; salesCagr3Y = `${v}%`; }
+  }
+
+  const fmt = (n: number | null, prefix = '', suffix = '') =>
+    n !== null ? `${prefix}${n.toLocaleString('en-IN')}${suffix}` : 'N/A';
+
   const topStats = [
-    { label: "Market Cap", value: "N/A", suffix: "" },
-    { label: "Current Price", value: "N/A", suffix: "" },
-    { label: "High / Low", value: "N/A", suffix: "" },
-    { label: "Stock P/E", value: "N/A", suffix: "" },
-    { label: "Book Value", value: "N/A", suffix: "" },
-    { label: "Dividend Yield", value: "N/A", suffix: "" },
-    { label: "ROCE", value: roceValue, suffix: roceValue !== "N/A" ? "%" : "" },
-    { label: "ROE", value: roeValue, suffix: roeValue !== "N/A" ? "%" : "" },
-    { label: "Face Value", value: "N/A", suffix: "" },
+    { label: 'Revenue (Latest FY)',  value: fmt(latestSales, '\u20B9', ' Cr'),     suffix: '' },
+    { label: 'Net Profit (FY)',      value: fmt(latestNetProfit, '\u20B9', ' Cr'), suffix: '' },
+    { label: 'OPM %',               value: latestOPM !== null ? `${latestOPM}%` : 'N/A', suffix: '' },
+    { label: 'EPS (Latest FY)',      value: latestEPS !== null ? `\u20B9${latestEPS.toFixed(2)}` : 'N/A', suffix: '' },
+    { label: 'Dividend Payout',      value: latestDivPayout !== null ? `${latestDivPayout}%` : 'N/A', suffix: '' },
+    { label: 'ROCE',                 value: roceValue !== 'N/A' ? `${roceValue}%` : 'N/A', suffix: '' },
+    { label: 'ROE',                  value: roeValue  !== 'N/A' ? `${roeValue}%` : 'N/A',  suffix: '' },
+    { label: 'Free Cash Flow',       value: fmt(latestFCF, '\u20B9', ' Cr'),       suffix: '' },
+    { label: 'Sales CAGR (3Y)',      value: salesCagr3Y, suffix: '' },
   ];
 
   return (
