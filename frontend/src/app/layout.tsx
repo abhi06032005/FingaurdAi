@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ClerkProvider } from '@clerk/nextjs';
 import { UserProvider } from "@/context/UserContext";
+import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
 
 
 const inter = Inter({
@@ -46,6 +47,7 @@ export default function RootLayout({
                 {children}
               </main>
               <Footer />
+              <DisclaimerBanner />
             </UserProvider>
           </QueryProvider>
 

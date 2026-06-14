@@ -13,6 +13,7 @@ import { useUserDb } from "@/context/UserContext";
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/stocks", label: "Stock Analyzer" },
+  { href: "/analysis", label: "Technical Analysis" },
   { href: "/news", label: "News" },
   { href: "/trading-journal", label: "Trading Journal" },
   { href: "/learn", label: "Learn" },
