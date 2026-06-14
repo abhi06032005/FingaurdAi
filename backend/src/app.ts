@@ -12,6 +12,9 @@ import stocksRoutes from './routes/stocksRoutes';
 import userRoutes from './routes/users';
 import paymentRoutes from './routes/payments';
 import { initCronJobs } from './services/cronService';
+import { scheduleDailyIngestionJob } from './jobs/dailyIngestionJob';
+import { scheduleWeeklyCleanupJob } from './jobs/weeklyCleanupJob';
+import technicalAnalysisRouter from './routes/technicalAnalysis';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from './middlewares/authMiddleware';
 import { clerkMiddleware } from '@clerk/express';
@@ -25,6 +28,9 @@ if (process.env.MONGO_URI) {
       console.log('[app] Connected to MongoDB for Stock Data');
       // Initialize background news fetch & cleanup cron tasks once database is connected
       initCronJobs();
+      // Initialize daily ingestion and weekly database maintenance crons
+      scheduleDailyIngestionJob();
+      scheduleWeeklyCleanupJob();
     })
     .catch(err => console.error('[app] MongoDB connection error:', err));
 } else {
@@ -59,6 +65,7 @@ app.use('/admin', adminRoutes);
 app.use('/trades', authenticate, tradeRoutes);
 app.use('/api/news', newsRoutes); // Public or protect if needed
 app.use('/api/ai-reports', aiReportRoutes);
+app.use('/api/stocks', technicalAnalysisRouter);
 app.use('/api/stocks', stocksRoutes); // Usually public
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/payments', authenticate, paymentRoutes);
