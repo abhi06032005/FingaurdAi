@@ -12,10 +12,13 @@ import {
   Info,
   AlertCircle,
   FileCode,
-  UserCheck
+  UserCheck,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useUserDb } from "@/context/UserContext";
+import { JournalRestriction } from "@/components/trading-journal/journal-restriction";
 
 interface Trade {
   id: string;
@@ -45,10 +48,23 @@ interface Trade {
 
 export default function AIAssistancePage() {
   const { userId, isLoaded, getToken } = useAuth();
+  const { dbUser, loadingDbUser } = useUserDb();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  if (loadingDbUser) {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
+    return <JournalRestriction />;
+  }
 
   // Fetch trades on component mount
   useEffect(() => {

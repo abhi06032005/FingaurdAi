@@ -8,6 +8,13 @@ const apify_client_1 = require("apify-client");
 const Stock_1 = __importDefault(require("../models/Stock"));
 const pdfAnnualReport_1 = require("../services/pdfAnnualReport");
 const router = express_1.default.Router();
+// NEVER expose admin routes in production
+router.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(404).send('Not Found');
+    }
+    next();
+});
 router.post('/scrape', async (req, res) => {
     const { ticker } = req.body;
     if (!ticker) {

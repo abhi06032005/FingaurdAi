@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import Trade from "../models/Trade";
+import prisma from "../config/prisma";
 
 const router = express.Router();
 
@@ -13,6 +14,23 @@ router.post("/", async (req: Request, res: Response): Promise<any> => {
   }
 
   try {
+    // Verify subscription plan
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+
+    if (!user || (user.plan !== "STANDARD" && user.plan !== "PREMIUM")) {
+      return res.status(403).json({ error: "Access denied. Standard or Premium subscription plan is required to access the Trading Journal." });
+    }
+
+    // Verify Standard plan limit
+    if (user.plan === "STANDARD") {
+      const tradeCount = await Trade.countDocuments({ userId });
+      if (tradeCount >= 50) {
+        return res.status(403).json({ error: "Trade limit reached. Standard plan allows up to 50 logs. Please upgrade to Premium Pro for unlimited logs." });
+      }
+    }
+
     const trade = await Trade.create({
       userId,
       symbol: tradeData.symbol,
@@ -62,6 +80,15 @@ router.get("/", async (req: Request, res: Response): Promise<any> => {
   }
 
   try {
+    // Verify subscription plan
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId }
+    });
+
+    if (!user || (user.plan !== "STANDARD" && user.plan !== "PREMIUM")) {
+      return res.status(403).json({ error: "Access denied. Standard or Premium subscription plan is required to access the Trading Journal." });
+    }
+
     const trades = await Trade.find({ userId })
       .sort({ entryDate: -1 })
       .lean();

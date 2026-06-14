@@ -65,7 +65,7 @@ const CONFIG: AppConfig = {
 };
 
 // ── Groq client ───────────────────────────────────────────────────────────────
-const groq = new Groq({ apiKey: CONFIG.groqApiKey });
+export const groq = new Groq({ apiKey: CONFIG.groqApiKey });
 
 // ═════════════════════════════════════════════════════════════════════════════
 // STEP 1 — Find and download the annual report PDF

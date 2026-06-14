@@ -41,6 +41,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.groq = void 0;
 exports.processCompany = processCompany;
 require("dotenv/config");
 const fs = __importStar(require("fs"));
@@ -77,7 +78,7 @@ const CONFIG = {
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 // ── Groq client ───────────────────────────────────────────────────────────────
-const groq = new groq_sdk_1.default({ apiKey: CONFIG.groqApiKey });
+exports.groq = new groq_sdk_1.default({ apiKey: CONFIG.groqApiKey });
 async function fetchAnnualReportPDF(symbol, isin) {
     logger.info(`[${symbol}] Searching for annual report PDF...`);
     try {
@@ -641,7 +642,7 @@ async function callGroq(prompt, symbol, sectionKey) {
     for (const model of models) {
         try {
             await delay(CONFIG.requestDelayMs);
-            const completion = await groq.chat.completions.create({
+            const completion = await exports.groq.chat.completions.create({
                 model,
                 messages: [
                     {

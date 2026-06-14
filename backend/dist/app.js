@@ -19,6 +19,7 @@ const payments_1 = __importDefault(require("./routes/payments"));
 const cronService_1 = require("./services/cronService");
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const authMiddleware_1 = require("./middlewares/authMiddleware");
+const express_2 = require("@clerk/express");
 const app = (0, express_1.default)();
 // Connect to MongoDB
 if (process.env.MONGO_URI) {
@@ -34,7 +35,10 @@ else {
     console.warn('[app] MONGO_URI not found in environment variables. Stock DB will not connect.');
 }
 app.use((0, helmet_1.default)());
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: process.env.FRONTEND_URL || '*',
+    credentials: true,
+}));
 // Global Rate Limiting
 const limiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -48,8 +52,9 @@ app.use(limiter);
 app.use('/webhooks', webhooks_1.default);
 app.use('/', webhooks_1.default);
 app.use(express_1.default.json());
+app.use((0, express_2.clerkMiddleware)());
 // Mount protected routes with authenticate middleware
-app.use('/admin', authMiddleware_1.authenticate, admin_1.default);
+app.use('/admin', admin_1.default);
 app.use('/trades', authMiddleware_1.authenticate, trades_1.default);
 app.use('/api/news', newsRoutes_1.default); // Public or protect if needed
 app.use('/api/ai-reports', aiReports_1.default);

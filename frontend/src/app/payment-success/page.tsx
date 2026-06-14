@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { useUserDb } from "@/context/UserContext";
+import { useAuth } from "@clerk/nextjs";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -12,10 +13,12 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { syncUser } = useUserDb();
+  const { getToken } = useAuth();
   const orderId = searchParams.get("order_id");
 
   const [status, setStatus] = useState<"verifying" | "success" | "failed">("verifying");
   const [errorMessage, setErrorMessage] = useState("");
+  const verificationStarted = useRef(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -24,9 +27,17 @@ function PaymentSuccessContent() {
       return;
     }
 
+    if (verificationStarted.current) return;
+    verificationStarted.current = true;
+
     const verifyPayment = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/payments/verify/${orderId}`);
+        const token = await getToken();
+        const res = await fetch(`${API_BASE}/api/payments/verify/${orderId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
         const result = await res.json();
 
         if (res.ok && result.success) {
@@ -45,7 +56,7 @@ function PaymentSuccessContent() {
     };
 
     verifyPayment();
-  }, [orderId, syncUser]);
+  }, [orderId, syncUser, getToken]);
 
   return (
     <div className="min-h-screen bg-[#07090f] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">

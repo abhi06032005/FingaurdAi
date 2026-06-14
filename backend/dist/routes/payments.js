@@ -11,7 +11,7 @@ const Payment_1 = __importDefault(require("../models/Payment"));
 const router = express_1.default.Router();
 // 1. POST /create-order
 router.post('/create-order', express_1.default.json(), async (req, res) => {
-    const { email, plan } = req.body;
+    const { email, plan, contact } = req.body;
     const userId = req.auth?.userId;
     if (!userId || !email || !plan) {
         return res.status(400).json({ error: 'Missing required parameters: email, plan or authentication token' });
@@ -37,6 +37,7 @@ router.post('/create-order', express_1.default.json(), async (req, res) => {
             orderId: rzpOrder.id,
             amount: price,
             plan,
+            contact: contact || null,
             status: 'PENDING'
         });
         console.log(`[Payments] Order created for user ${userId}. ID: ${rzpOrder.id}`);
@@ -147,11 +148,23 @@ router.post('/webhook-verify', express_1.default.json(), async (req, res) => {
 // 4. Background Reconciliation Function (checks stuck/pending payments with Razorpay)
 async function reconcilePendingPayments() {
     try {
-        // Check payments older than 3 minutes to avoid race conditions with standard checkout redirect
-        const fiveMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+        const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Auto-expire/fail pending payments older than 24 hours so we don't query them again
+        const expireResult = await Payment_1.default.updateMany({
+            status: 'PENDING',
+            createdAt: { $lt: twentyFourHoursAgo }
+        }, {
+            status: 'FAILED',
+            processed: true
+        });
+        if (expireResult.modifiedCount > 0) {
+            console.log(`[Reconciliation] Auto-expired ${expireResult.modifiedCount} old pending payments older than 24 hours.`);
+        }
+        // Only query Razorpay for pending payments created between 3 minutes and 24 hours ago
         const pendingPayments = await Payment_1.default.find({
             status: 'PENDING',
-            createdAt: { $lt: fiveMinutesAgo }
+            createdAt: { $gt: twentyFourHoursAgo, $lt: threeMinutesAgo }
         });
         if (pendingPayments.length === 0)
             return;
@@ -184,7 +197,16 @@ async function reconcilePendingPayments() {
                 }
             }
             catch (err) {
-                console.error(`[Reconciliation] Failed checking Order ${payment.orderId}:`, err.message);
+                const errMsg = err.message || (err.error && err.error.description) || String(err);
+                console.error(`[Reconciliation] Failed checking Order ${payment.orderId}:`, errMsg);
+                // If order does not exist or is invalid, mark it as failed to avoid looping forever
+                const statusCode = err.statusCode || (err.error && err.error.code);
+                if (statusCode === 400 || statusCode === 404 || errMsg.toLowerCase().includes('not found') || errMsg.toLowerCase().includes('invalid')) {
+                    payment.status = 'FAILED';
+                    payment.processed = true;
+                    await payment.save();
+                    console.log(`[Reconciliation] Order ${payment.orderId} marked as FAILED due to invalid/non-existent status.`);
+                }
             }
         }
     }

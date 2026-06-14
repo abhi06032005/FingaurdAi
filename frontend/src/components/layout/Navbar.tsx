@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Show, UserButton, useUser } from '@clerk/nextjs';
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -22,11 +22,14 @@ const navItems = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { isLoaded, isSignedIn } = useUser();
   const { dbUser, updatePlan } = useUserDb();
   const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(false);
+
+  if (pathname === "/tradespace") return null;
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {

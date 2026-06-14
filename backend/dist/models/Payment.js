@@ -69,6 +69,10 @@ const PaymentSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false
     },
+    contact: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now

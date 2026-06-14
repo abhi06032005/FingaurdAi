@@ -8,6 +8,7 @@ const aiReportService_1 = require("../services/aiReportService");
 const CompanyAIReport_1 = require("../models/CompanyAIReport");
 const Stock_1 = __importDefault(require("../models/Stock"));
 const authMiddleware_1 = require("../middlewares/authMiddleware");
+const pdfAnnualReport_1 = require("../services/pdfAnnualReport");
 const router = express_1.default.Router();
 /**
  * POST /api/ai-reports/generate
@@ -139,6 +140,77 @@ router.delete('/:ticker', authMiddleware_1.authenticate, async (req, res) => {
     catch (err) {
         console.error(`[AIReport Route] DELETE /${symbol} error:`, err.message);
         return res.status(500).json({ success: false, error: err.message });
+    }
+});
+/**
+ * POST /api/ai-reports/chat
+ *
+ * Empathy-first chat session for Indian retail traders using Llama-3.3-70b-versatile.
+ */
+router.post('/chat', async (req, res) => {
+    try {
+        const { messages } = req.body;
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({
+                error: 'messages array required'
+            });
+        }
+        const completion = await pdfAnnualReport_1.groq.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            max_tokens: 300,
+            temperature: 0.85,
+            messages: [
+                {
+                    role: "system",
+                    content: `You are TradeSpace Guide — an empathetic
+                    companion for Indian retail traders who are
+                    processing losses and trading stress. Your
+                    personality: warm, calm, honest, like a senior
+                    trader friend who has seen losses himself and
+                    genuinely cares.
+
+                    Rules:
+                    1. Always respond in the same language mix the
+                       user used. If they write Hinglish, reply
+                       Hinglish. If Hindi, reply Hindi. If English,
+                       reply English.
+                    2. Never use corporate language or generic
+                       motivational quotes. No robotic phrases like
+                       "I understand your feelings."
+                    3. First message in a conversation: acknowledge
+                       their emotion genuinely in 1-2 lines before
+                       anything else.
+                    4. Ask one specific follow-up question about
+                       their trade or situation — show you are
+                       actually listening.
+                    5. Keep responses under 100 words. Short and
+                       warm beats long and clinical.
+                    6. If user mentions large losses above ₹50,000
+                       or sounds severely distressed: gently mention
+                       the free Thursday 7pm community session once,
+                       naturally, not as a sales pitch.
+                    7. Never give specific buy/sell advice. You are
+                       emotional support not a SEBI advisor.
+                    8. Occasionally reference real market context
+                       naturally — "BankNifty had a rough week for
+                       everyone" type of acknowledgment.
+                    9. End responses with warmth, never with a
+                       disclaimer.
+                    10. If user seems to be in genuine crisis beyond
+                        trading stress — mention iCall helpline
+                        9152987821 gently and naturally.`
+                },
+                ...messages
+            ]
+        });
+        const reply = completion.choices[0].message.content;
+        return res.json({ reply });
+    }
+    catch (error) {
+        console.error('TradeSpace chat error:', error);
+        return res.status(500).json({
+            error: 'Could not process message'
+        });
     }
 });
 exports.default = router;

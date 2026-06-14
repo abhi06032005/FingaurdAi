@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, Sparkles, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUserDb } from "@/context/UserContext";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -19,8 +19,13 @@ declare global {
 export default function PlansPage() {
   const { dbUser, updatePlan, syncUser } = useUserDb();
   const { getToken } = useAuth();
+  const { user } = useUser();
+  
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(false);
+  const [showMobileModal, setShowMobileModal] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState<{ id: string; name: string } | null>(null);
 
   const currentPlan = dbUser?.plan || "FREE";
   const reportsUsed = dbUser?.reportsUsed || 0;
@@ -77,7 +82,18 @@ export default function PlansPage() {
     });
   };
 
-  const handleUpgrade = async (planId: string, planName: string) => {
+  const handleUpgradeClick = (planId: string, planName: string) => {
+    if (!dbUser) {
+      alert("Please sign in to upgrade your plan.");
+      return;
+    }
+    const clerkPhone = user?.primaryPhoneNumber?.phoneNumber || "";
+    setMobileNumber(clerkPhone);
+    setSelectedPlan({ id: planId, name: planName });
+    setShowMobileModal(true);
+  };
+
+  const handleUpgrade = async (planId: string, planName: string, contactNumber: string) => {
     if (!dbUser) {
       alert("Please sign in to upgrade your plan.");
       return;
@@ -93,7 +109,8 @@ export default function PlansPage() {
         },
         body: JSON.stringify({
           email: dbUser.email,
-          plan: planId
+          plan: planId,
+          contact: contactNumber
         }),
       });
 
@@ -121,6 +138,7 @@ export default function PlansPage() {
           },
           prefill: {
             email: dbUser.email,
+            contact: contactNumber,
           },
           theme: {
             color: "#4f46e5", // Indigo 600
@@ -277,7 +295,7 @@ export default function PlansPage() {
                 <Button
                   variant={plan.buttonVariant}
                   disabled={plan.buttonDisabled}
-                  onClick={() => handleUpgrade(plan.id, plan.name)}
+                  onClick={() => handleUpgradeClick(plan.id, plan.name)}
                   className={`w-full py-6.5 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer ${
                     plan.buttonVariant === "default"
                       ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
@@ -352,6 +370,59 @@ export default function PlansPage() {
                 >
                   Go to Stock Analyzer
                 </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Number Input Modal */}
+      {showMobileModal && selectedPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-emerald-500/10 border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="space-y-5">
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-black text-white tracking-tight">Enter Mobile Number</h3>
+                <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                  Please provide your contact number for payment receipt and transaction updates.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  placeholder="e.g. +91 99999 99999"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-semibold"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    if (!mobileNumber.trim()) {
+                      alert("Please enter a valid mobile number.");
+                      return;
+                    }
+                    setShowMobileModal(false);
+                    handleUpgrade(selectedPlan.id, selectedPlan.name, mobileNumber.trim());
+                  }}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer font-extrabold uppercase tracking-wider text-xs"
+                >
+                  Proceed to Payment
+                </button>
+                <button
+                  onClick={() => setShowMobileModal(false)}
+                  className="w-full py-3 text-slate-400 hover:text-white font-bold rounded-2xl text-xs transition-colors font-bold uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

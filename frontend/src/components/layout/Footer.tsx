@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
+  
+  if (pathname === "/tradespace") return null;
   return (
     <footer className="w-full border-t border-border/70 bg-background/72 py-10 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:flex md:items-center md:justify-between">

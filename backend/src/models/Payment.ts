@@ -8,6 +8,7 @@ export interface IPayment extends Document {
   status: 'PENDING' | 'SUCCESS' | 'FAILED';
   paymentGatewayId: string | null;
   processed: boolean;
+  contact?: string;
   createdAt: Date;
 }
 
@@ -45,6 +46,10 @@ const PaymentSchema: Schema = new Schema({
   processed: {
     type: Boolean,
     default: false
+  },
+  contact: {
+    type: String,
+    default: null
   },
   createdAt: {
     type: Date,

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const Trade_1 = __importDefault(require("../models/Trade"));
+const prisma_1 = __importDefault(require("../config/prisma"));
 const router = express_1.default.Router();
 // Save new trade
 router.post("/", async (req, res) => {
@@ -14,6 +15,20 @@ router.post("/", async (req, res) => {
         return res.status(401).json({ error: "Missing authentication token" });
     }
     try {
+        // Verify subscription plan
+        const user = await prisma_1.default.user.findUnique({
+            where: { clerkUserId: userId }
+        });
+        if (!user || (user.plan !== "STANDARD" && user.plan !== "PREMIUM")) {
+            return res.status(403).json({ error: "Access denied. Standard or Premium subscription plan is required to access the Trading Journal." });
+        }
+        // Verify Standard plan limit
+        if (user.plan === "STANDARD") {
+            const tradeCount = await Trade_1.default.countDocuments({ userId });
+            if (tradeCount >= 50) {
+                return res.status(403).json({ error: "Trade limit reached. Standard plan allows up to 50 logs. Please upgrade to Premium Pro for unlimited logs." });
+            }
+        }
         const trade = await Trade_1.default.create({
             userId,
             symbol: tradeData.symbol,
@@ -56,6 +71,13 @@ router.get("/", async (req, res) => {
         return res.status(401).json({ error: "Missing authentication token" });
     }
     try {
+        // Verify subscription plan
+        const user = await prisma_1.default.user.findUnique({
+            where: { clerkUserId: userId }
+        });
+        if (!user || (user.plan !== "STANDARD" && user.plan !== "PREMIUM")) {
+            return res.status(403).json({ error: "Access denied. Standard or Premium subscription plan is required to access the Trading Journal." });
+        }
         const trades = await Trade_1.default.find({ userId })
             .sort({ entryDate: -1 })
             .lean();

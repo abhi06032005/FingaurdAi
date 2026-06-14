@@ -18,12 +18,15 @@ import {
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useUserDb } from "@/context/UserContext";
+import { JournalRestriction } from "@/components/trading-journal/journal-restriction";
 
 // Define trade type matching schema.prisma
 interface Trade {
@@ -56,9 +59,22 @@ interface Trade {
 
 export default function AnalysisPage() {
   const { userId, isLoaded, getToken } = useAuth();
+  const { dbUser, loadingDbUser } = useUserDb();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  if (loadingDbUser) {
+    return (
+      <div className="min-h-screen bg-[#07090f] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
+    return <JournalRestriction />;
+  }
 
   // Heatmap navigation state
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());

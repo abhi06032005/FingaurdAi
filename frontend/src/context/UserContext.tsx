@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 
 export interface DbUser {
@@ -36,7 +36,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [dbUser, setDbUser] = useState<DbUser | null>(null);
   const [loadingDbUser, setLoadingDbUser] = useState<boolean>(true);
 
-  const syncUser = async () => {
+  const syncUser = useCallback(async () => {
     if (!isSignedIn || !user) {
       setDbUser(null);
       setLoadingDbUser(false);
@@ -79,9 +79,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoadingDbUser(false);
     }
-  };
+  }, [isSignedIn, user, getToken]);
 
-  const incrementReportsUsed = async () => {
+  const incrementReportsUsed = useCallback(async () => {
     if (!isSignedIn || !user || !dbUser) return;
 
     try {
@@ -105,9 +105,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("[UserContext] Error incrementing reports count:", err);
     }
-  };
+  }, [isSignedIn, user, dbUser, getToken]);
 
-  const updatePlan = async (plan: string) => {
+  const updatePlan = useCallback(async (plan: string) => {
     if (!isSignedIn || !user || !dbUser) return;
 
     try {
@@ -133,14 +133,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("[UserContext] Error updating plan:", err);
     }
-  };
+  }, [isSignedIn, user, dbUser, getToken]);
 
   // Sync when Clerk user loads or changes
   useEffect(() => {
     if (isLoaded) {
       syncUser();
     }
-  }, [isLoaded, isSignedIn, user?.id]);
+  }, [isLoaded, isSignedIn, user?.id, syncUser]);
 
   return (
     <UserContext.Provider

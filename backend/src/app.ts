@@ -14,6 +14,7 @@ import paymentRoutes from './routes/payments';
 import { initCronJobs } from './services/cronService';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from './middlewares/authMiddleware';
+import { clerkMiddleware } from '@clerk/express';
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/webhooks', webhookRoutes);
 app.use('/', webhookRoutes);
 
 app.use(express.json());
+app.use(clerkMiddleware());
 
 // Mount protected routes with authenticate middleware
 app.use('/admin', adminRoutes);
