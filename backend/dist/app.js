@@ -11,12 +11,14 @@ const errorHandler_1 = require("./middlewares/errorHandler");
 const webhooks_1 = __importDefault(require("./routes/webhooks"));
 const admin_1 = __importDefault(require("./routes/admin"));
 const trades_1 = __importDefault(require("./routes/trades"));
-const newsRoutes_1 = __importDefault(require("./routes/newsRoutes"));
 const aiReports_1 = __importDefault(require("./routes/aiReports"));
 const stocksRoutes_1 = __importDefault(require("./routes/stocksRoutes"));
 const users_1 = __importDefault(require("./routes/users"));
 const payments_1 = __importDefault(require("./routes/payments"));
 const cronService_1 = require("./services/cronService");
+const dailyIngestionJob_1 = require("./jobs/dailyIngestionJob");
+const weeklyCleanupJob_1 = require("./jobs/weeklyCleanupJob");
+const technicalAnalysis_1 = __importDefault(require("./routes/technicalAnalysis"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const authMiddleware_1 = require("./middlewares/authMiddleware");
 const express_2 = require("@clerk/express");
@@ -28,6 +30,9 @@ if (process.env.MONGO_URI) {
         console.log('[app] Connected to MongoDB for Stock Data');
         // Initialize background news fetch & cleanup cron tasks once database is connected
         (0, cronService_1.initCronJobs)();
+        // Initialize daily ingestion and weekly database maintenance crons
+        (0, dailyIngestionJob_1.scheduleDailyIngestionJob)();
+        (0, weeklyCleanupJob_1.scheduleWeeklyCleanupJob)();
     })
         .catch(err => console.error('[app] MongoDB connection error:', err));
 }
@@ -56,8 +61,8 @@ app.use((0, express_2.clerkMiddleware)());
 // Mount protected routes with authenticate middleware
 app.use('/admin', admin_1.default);
 app.use('/trades', authMiddleware_1.authenticate, trades_1.default);
-app.use('/api/news', newsRoutes_1.default); // Public or protect if needed
 app.use('/api/ai-reports', aiReports_1.default);
+app.use('/api/stocks', technicalAnalysis_1.default);
 app.use('/api/stocks', stocksRoutes_1.default); // Usually public
 app.use('/api/users', authMiddleware_1.authenticate, users_1.default);
 app.use('/api/payments', authMiddleware_1.authenticate, payments_1.default);

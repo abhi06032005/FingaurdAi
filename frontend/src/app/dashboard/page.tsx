@@ -24,12 +24,12 @@ export default function DashboardPage() {
         
         {/* Top Header Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="fg-panel rounded-lg p-6 md:p-8 md:col-span-2 flex flex-col justify-between border border-border/20 bg-[#0c0e17]/60">
+          <div className="fg-panel rounded-lg p-6 md:p-8 md:col-span-2 flex flex-col justify-between border border-border bg-card shadow-sm">
             <div>
               <div aria-hidden className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
                 <Bookmark className="h-5 w-5" />
               </div>
-              <h1 className="fg-title text-3xl md:text-4xl">My Dashboard</h1>
+              <h1 className="fg-title text-3xl md:text-4xl text-foreground">My Dashboard</h1>
               <p className="mt-3 max-w-2xl text-muted-foreground">
                 Manage your saved research, track scam reports, and view upcoming events.
               </p>
@@ -37,55 +37,55 @@ export default function DashboardPage() {
           </div>
 
           {/* Dynamic Plan Card */}
-          <div className="fg-panel rounded-lg p-6 border border-border/20 bg-[#0c0e17]/60 flex flex-col justify-between relative overflow-hidden">
+          <div className="fg-panel rounded-lg p-6 border border-border bg-card flex flex-col justify-between relative overflow-hidden shadow-sm">
             {loadingDbUser ? (
               <div className="flex h-full items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : !dbUser ? (
               <div className="space-y-4">
-                <h3 className="font-bold text-white text-lg">Access Denied</h3>
+                <h3 className="font-bold text-foreground text-lg">Access Denied</h3>
                 <p className="text-xs text-muted-foreground">Please sign in to view your account subscription plan details.</p>
               </div>
             ) : (
               <div className="flex flex-col h-full justify-between space-y-4">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Account Tier</span>
+                    <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Account Tier</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
                       dbUser.plan === "PREMIUM"
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600"
                         : dbUser.plan === "STANDARD"
-                        ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-400"
-                        : "bg-slate-800/40 border-slate-700 text-slate-400"
+                        ? "bg-primary/10 border border-primary/20 text-primary"
+                        : "bg-muted border border-border text-muted-foreground"
                     }`}>
                       {dbUser.plan} Plan
                     </span>
                   </div>
                   
                   <div className="mt-4 flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-lg border border-slate-800 bg-slate-900/60 flex items-center justify-center text-slate-300">
+                    <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center text-muted-foreground">
                       <CreditCard className="h-4.5 w-4.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-400">Current Plan Status</p>
-                      <h4 className="text-sm font-black text-white">
+                      <p className="text-xs font-bold text-muted-foreground">Current Plan Status</p>
+                      <h4 className="text-sm font-black text-foreground">
                         {dbUser.plan === "FREE" ? "Free Trial Active" : "Subscribed"}
                       </h4>
                     </div>
                   </div>
 
                   {dbUser.plan !== "FREE" && (
-                    <div className="mt-4 space-y-2 text-xs font-semibold text-slate-300">
+                    <div className="mt-4 space-y-2 text-xs font-semibold text-muted-foreground">
                       <div className="flex justify-between">
                         <span>Activated:</span>
-                        <span className="text-white">
+                        <span className="text-foreground">
                           {dbUser.planStartDate ? new Date(dbUser.planStartDate).toLocaleDateString() : "N/A"}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Expires:</span>
-                        <span className="text-white">
+                        <span className="text-foreground">
                           {dbUser.planExpiryDate ? new Date(dbUser.planExpiryDate).toLocaleDateString() : "N/A"}
                         </span>
                       </div>
@@ -96,10 +96,10 @@ export default function DashboardPage() {
                 <div className="pt-2">
                   {dbUser.plan === "FREE" ? (
                     <div className="space-y-3">
-                      <p className="text-[11px] font-bold text-slate-400 leading-normal">
+                      <p className="text-[11px] font-bold text-muted-foreground leading-normal">
                         Upgrade to Standard or Premium to run more AI stock analysis reports.
                       </p>
-                      <Link href="/plans" className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-1">
+                      <Link href="/plans" className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-1 cursor-pointer">
                         Upgrade Plan <ArrowRight className="h-3 w-3" />
                       </Link>
                     </div>
@@ -107,22 +107,22 @@ export default function DashboardPage() {
                     <div className="space-y-3">
                       <div className={`px-3 py-2 rounded-xl border text-[11px] font-bold text-center flex items-center justify-center gap-1.5 ${
                         daysLeft <= 5
-                          ? "bg-red-500/10 border-red-500/20 text-red-400"
-                          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                          ? "bg-red-500/10 border-red-500/20 text-red-650"
+                          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
                       }`}>
                         {daysLeft <= 5 ? (
                           <>
-                            <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+                            <AlertTriangle className="h-3.5 w-3.5 text-red-650" />
                             <span>{daysLeft} Days Remaining (Renew Soon)</span>
                           </>
                         ) : (
                           <>
-                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                             <span>{daysLeft} Days Remaining</span>
                           </>
                         )}
                       </div>
-                      <Link href="/plans" className="w-full py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-1">
+                      <Link href="/plans" className="w-full py-2 bg-card hover:bg-muted text-foreground text-[11px] font-black uppercase tracking-wider rounded-xl transition-all border border-border flex items-center justify-center gap-1 cursor-pointer">
                         Change Plan
                       </Link>
                     </div>

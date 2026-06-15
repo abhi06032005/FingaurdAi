@@ -12,8 +12,8 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl h-[160px] flex items-center justify-center">
-        <span className="text-xs text-slate-500">History unavailable</span>
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm h-[160px] flex items-center justify-center">
+        <span className="text-xs text-muted-foreground">History unavailable</span>
       </div>
     );
   }
@@ -69,8 +69,8 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
   // Get current color depending on the score value
   const getStrokeColor = (val: number) => {
     if (val <= 20) return '#ef4444';
-    if (val <= 40) return '#f97316';
-    if (val <= 60) return '#eab308';
+    if (val <= 40) return '#ea580c'; // aligned with primary brand orange
+    if (val <= 60) return '#d97706';
     if (val <= 80) return '#84cc16';
     return '#22c55e';
   };
@@ -79,14 +79,14 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
   const strokeColor = getStrokeColor(latestScore);
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between h-[170px] relative">
+    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[170px] relative">
       <div className="flex items-center justify-between mb-2 select-none">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           30-Day Technical Strength Trend
         </span>
         {hoveredIdx !== null ? (
           <span 
-            className="text-xs font-bold font-mono px-2 py-0.5 rounded border bg-slate-850"
+            className="text-xs font-bold font-mono px-2 py-0.5 rounded border bg-muted"
             style={{ 
               color: getStrokeColor(points[hoveredIdx].score),
               borderColor: `${getStrokeColor(points[hoveredIdx].score)}20`
@@ -95,7 +95,7 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
             {points[hoveredIdx].date}: {Math.round(points[hoveredIdx].score)}
           </span>
         ) : (
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-xs text-muted-foreground/80 font-mono">
             Hover to inspect
           </span>
         )}
@@ -138,7 +138,7 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
                 y1={0}
                 x2={points[hoveredIdx].x}
                 y2={height}
-                stroke="#475569"
+                stroke="var(--border)"
                 strokeWidth="1"
                 strokeDasharray="2 2"
               />
@@ -148,14 +148,14 @@ export default function ScoreHistorySparkline({ history }: SparklineProps) {
                 cy={points[hoveredIdx].y}
                 r="4.5"
                 fill={getStrokeColor(points[hoveredIdx].score)}
-                stroke="#0f172a"
+                stroke="var(--background)"
                 strokeWidth="1.5"
               />
             </>
           )}
 
           {/* Base border indicator line */}
-          <line x1={0} y1={height} x2={width} y2={height} stroke="#334155" strokeWidth="0.5" />
+          <line x1={0} y1={height} x2={width} y2={height} stroke="var(--border)" strokeWidth="0.5" />
         </svg>
       </div>
     </div>

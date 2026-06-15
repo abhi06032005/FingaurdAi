@@ -180,15 +180,15 @@ export default function PriceChart({ symbol }: PriceChartProps) {
     let mainSeries;
     if (chartType === 'area') {
       mainSeries = chart.addSeries(AreaSeries, {
-        lineColor: '#2962ff', // TradingView Blue
-        topColor: 'rgba(41, 98, 255, 0.18)',
-        bottomColor: 'rgba(41, 98, 255, 0.00)',
+        lineColor: '#ea580c', // Orange/Amber
+        topColor: 'rgba(234, 88, 12, 0.18)',
+        bottomColor: 'rgba(234, 88, 12, 0.00)',
         lineWidth: 3,
         priceLineVisible: false,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 5,
         crosshairMarkerBorderColor: '#ffffff',
-        crosshairMarkerBackgroundColor: '#2962ff',
+        crosshairMarkerBackgroundColor: '#ea580c',
       });
       mainSeries.setData(sortedData.map(c => ({
         time: c.time,
@@ -319,13 +319,13 @@ export default function PriceChart({ symbol }: PriceChartProps) {
 
   if (loading) {
     return (
-      <div className="bg-[#090d16]/40 backdrop-blur-md border border-white/5 rounded-2xl h-[460px] w-full flex items-center justify-center">
+      <div className="bg-card border border-border rounded-2xl h-[460px] w-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-            <Activity className="w-4 h-4 text-indigo-400 absolute inset-0 m-auto animate-pulse" />
+            <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <Activity className="w-4 h-4 text-primary absolute inset-0 m-auto animate-pulse" />
           </div>
-          <p className="text-xs text-slate-500">Loading chart data...</p>
+          <p className="text-xs text-muted-foreground">Loading chart data...</p>
         </div>
       </div>
     );
@@ -333,36 +333,37 @@ export default function PriceChart({ symbol }: PriceChartProps) {
 
   if (error || candles.length === 0) {
     return (
-      <div className="bg-[#090d16]/40 backdrop-blur-md border border-white/5 rounded-2xl h-[460px] w-full flex items-center justify-center p-6 text-center">
-        <p className="text-sm text-slate-450">Unable to load price history. Please try again later.</p>
+      <div className="bg-card border border-border rounded-2xl h-[460px] w-full flex items-center justify-center p-6 text-center">
+        <p className="text-sm text-muted-foreground">Unable to load price history. Please try again later.</p>
       </div>
     );
   }
+
   return (
-    <div className="bg-white border border-[#e0e3eb] rounded-2xl p-6 shadow-xl w-full flex flex-col justify-between h-[540px] hover:border-slate-300 transition-all duration-300">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-xl w-full flex flex-col justify-between h-[540px] hover:border-foreground/20 transition-all duration-300">
       {/* Chart Headers and Toggles */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3 select-none">
         <div>
-          <h3 className="text-sm font-black text-[#131722] tracking-wider uppercase flex items-center gap-2">
-            <Activity size={14} className="text-[#2962ff]" />
+          <h3 className="text-sm font-black text-foreground tracking-wider uppercase flex items-center gap-2">
+            <Activity size={14} className="text-primary" />
             Price History Chart
           </h3>
-          <p className="text-[10px] text-[#787b86] mt-0.5">Sleek daily interval closing price {chartType === 'area' ? 'area series' : 'candlestick series'}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Sleek daily interval closing price {chartType === 'area' ? 'area series' : 'candlestick series'}</p>
         </div>
         
         {/* Toggle Controls */}
         <div className="flex flex-wrap items-center gap-2 text-[10px]">
           {/* Chart Type Toggles */}
-          <div className="flex items-center bg-[#f0f3fa] rounded-lg p-0.5 border border-[#e0e3eb] gap-0.5 mr-2">
+          <div className="flex items-center bg-muted rounded-lg p-0.5 border border-border gap-0.5 mr-2">
             <button
               onClick={() => setChartType('area')}
-              className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer ${chartType === 'area' ? 'bg-white text-[#2962ff] shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-[#e0e3eb]' : 'text-[#787b86] hover:text-[#131722]'}`}
+              className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer ${chartType === 'area' ? 'bg-card text-primary shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-border' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Area
             </button>
             <button
               onClick={() => setChartType('candles')}
-              className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer ${chartType === 'candles' ? 'bg-white text-[#2962ff] shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-[#e0e3eb]' : 'text-[#787b86] hover:text-[#131722]'}`}
+              className={`px-2.5 py-1 rounded-md font-bold uppercase text-[9px] tracking-wider transition-all duration-200 cursor-pointer ${chartType === 'candles' ? 'bg-card text-primary shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-border' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Candles
             </button>
@@ -370,28 +371,28 @@ export default function PriceChart({ symbol }: PriceChartProps) {
 
           <button
             onClick={() => setShowSma20(!showSma20)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma20 ? 'bg-cyan-50 text-cyan-800 border-cyan-300 shadow-sm' : 'bg-white text-[#787b86] border-[#e0e3eb] hover:bg-[#f8f9fa] hover:text-[#131722]'}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma20 ? 'bg-cyan-50/50 text-cyan-800 border-cyan-300 shadow-sm' : 'bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'}`}
           >
             {showSma20 ? <Eye size={11} /> : <EyeOff size={11} />}
             SMA 20
           </button>
           <button
             onClick={() => setShowSma50(!showSma50)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma50 ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-sm' : 'bg-white text-[#787b86] border-[#e0e3eb] hover:bg-[#f8f9fa] hover:text-[#131722]'}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma50 ? 'bg-amber-50/50 text-amber-800 border-amber-300 shadow-sm' : 'bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'}`}
           >
             {showSma50 ? <Eye size={11} /> : <EyeOff size={11} />}
             SMA 50
           </button>
           <button
             onClick={() => setShowSma200(!showSma200)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma200 ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-sm' : 'bg-white text-[#787b86] border-[#e0e3eb] hover:bg-[#f8f9fa] hover:text-[#131722]'}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showSma200 ? 'bg-rose-50/50 text-rose-800 border-rose-300 shadow-sm' : 'bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'}`}
           >
             {showSma200 ? <Eye size={11} /> : <EyeOff size={11} />}
             SMA 200
           </button>
           <button
             onClick={() => setShowEma50(!showEma50)}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showEma50 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm' : 'bg-white text-[#787b86] border-[#e0e3eb] hover:bg-[#f8f9fa] hover:text-[#131722]'}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${showEma50 ? 'bg-emerald-50/50 text-emerald-800 border-emerald-300 shadow-sm' : 'bg-card text-muted-foreground border-border hover:bg-muted/50 hover:text-foreground'}`}
           >
             {showEma50 ? <Eye size={11} /> : <EyeOff size={11} />}
             EMA 50
@@ -401,14 +402,14 @@ export default function PriceChart({ symbol }: PriceChartProps) {
 
       {/* Dynamic Legend / Tooltip */}
       {hoveredData && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[#131722] text-xs font-mono select-none px-3 py-1.5 bg-[#f8f9fa] border border-[#e0e3eb] rounded-xl mb-3 shadow-inner">
-          <span className="text-[#787b86] font-bold uppercase tracking-wider text-[10px]">OHLCV:</span>
-          <span>Time: <span className="text-[#131722] font-bold">{hoveredData.time}</span></span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-foreground text-xs font-mono select-none px-3 py-1.5 bg-muted/50 border border-border rounded-xl mb-3 shadow-inner">
+          <span className="text-muted-foreground font-bold uppercase tracking-wider text-[10px]">OHLCV:</span>
+          <span>Time: <span className="text-foreground font-bold">{hoveredData.time}</span></span>
           <span>O: <span className={hoveredData.close >= hoveredData.open ? "text-[#089981] font-bold" : "text-[#f23645] font-bold"}>{hoveredData.open.toFixed(2)}</span></span>
-          <span>H: <span className="text-[#131722] font-bold">{hoveredData.high.toFixed(2)}</span></span>
-          <span>L: <span className="text-[#131722] font-bold">{hoveredData.low.toFixed(2)}</span></span>
+          <span>H: <span className="text-foreground font-bold">{hoveredData.high.toFixed(2)}</span></span>
+          <span>L: <span className="text-foreground font-bold">{hoveredData.low.toFixed(2)}</span></span>
           <span>C: <span className={hoveredData.close >= hoveredData.open ? "text-[#089981] font-bold" : "text-[#f23645] font-bold"}>{hoveredData.close.toFixed(2)}</span></span>
-          <span>V: <span className="text-[#2962ff] font-bold">{(hoveredData.volume / 1000000).toFixed(2)}M</span></span>
+          <span>V: <span className="text-primary font-bold">{(hoveredData.volume / 1000000).toFixed(2)}M</span></span>
         </div>
       )}
 

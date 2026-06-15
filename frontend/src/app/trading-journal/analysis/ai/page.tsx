@@ -54,18 +54,6 @@ export default function AIAssistancePage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  if (loadingDbUser) {
-    return (
-      <div className="min-h-screen bg-[#07090f] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
-    return <JournalRestriction />;
-  }
-
   // Fetch trades on component mount
   useEffect(() => {
     if (!isLoaded || !userId) return;
@@ -206,6 +194,18 @@ ${formattedJSON}`;
     );
   }
 
+  if (loadingDbUser) {
+    return (
+      <div className="fg-shell min-h-screen flex items-center justify-center text-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
+    return <JournalRestriction />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -216,8 +216,8 @@ ${formattedJSON}`;
             <ArrowLeft className="h-4 w-4" />
             Back to Analytics
           </Link>
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-            <Sparkles className="h-8 w-8 text-violet-500" />
+          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3 text-foreground">
+            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
             Analyze Performance with AI
           </h1>
           <p className="text-muted-foreground">
@@ -251,10 +251,10 @@ ${formattedJSON}`;
           <div className="space-y-6">
             
             {/* Guide Step Banner */}
-            <div className="flex gap-4 p-4 border rounded-xl bg-violet-600/5 border-violet-500/20 text-sm leading-relaxed">
-              <Info className="h-5 w-5 text-violet-500 flex-shrink-0 mt-0.5" />
+            <div className="flex gap-4 p-4 border rounded-xl bg-primary/5 border-primary/20 text-sm leading-relaxed">
+              <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-violet-400 mb-1">How it works</h4>
+                <h4 className="font-bold text-primary mb-1">How it works</h4>
                 <p className="text-muted-foreground">
                   Open AI tools like ChatGPT or Claude, copy the pre-built prompt containing your anonymized trade database history from below, and paste it. The prompt instructs the AI to run advanced analytics on your data and highlight growth rules tailored to your style.
                 </p>
@@ -262,25 +262,25 @@ ${formattedJSON}`;
             </div>
 
             {/* Prompt Code Block Interface */}
-            <Card className="border-border/60 bg-card/30 backdrop-blur-sm shadow-md overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 pb-4">
+            <Card className="border-border bg-card/30 backdrop-blur-sm shadow-md overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                 <div className="space-y-1">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <FileCode className="h-4 w-4 text-violet-500" />
+                    <FileCode className="h-4 w-4 text-primary" />
                     ChatGPT / Claude System Prompt & Data
                   </CardTitle>
                   <CardDescription className="text-xs">
                     Contains anonymized symbol entries, timestamps, returns, strategies, and logged cognitive behaviors.
                   </CardDescription>
                 </div>
-
+ 
                 {/* Combined Copy Action */}
                 <Button 
                   onClick={handleCopyPrompt} 
                   className={`flex items-center gap-1.5 cursor-pointer shadow-sm font-semibold transition-all ${
                     copied 
-                      ? "bg-green-600 hover:bg-green-700 text-white" 
-                      : "bg-violet-600 hover:bg-violet-700 text-white"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white" 
+                      : "bg-primary hover:bg-primary/90 text-primary-foreground"
                   }`}
                 >
                   {copied ? (
@@ -298,7 +298,7 @@ ${formattedJSON}`;
               </CardHeader>
               <CardContent className="p-0">
                 <div className="relative">
-                  <pre className="max-h-[400px] overflow-y-auto p-5 text-xs font-mono bg-[#050505] text-gray-300 leading-relaxed rounded-b-xl whitespace-pre-wrap">
+                  <pre className="max-h-[400px] overflow-y-auto p-5 text-xs font-mono bg-muted/40 text-foreground border border-border leading-relaxed rounded-b-xl whitespace-pre-wrap">
                     {customPromptText}
                   </pre>
                 </div>

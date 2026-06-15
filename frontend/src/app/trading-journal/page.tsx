@@ -12,7 +12,7 @@ export default function TradingJournalPage() {
 
   if (loadingDbUser) {
     return (
-      <div className="min-h-screen bg-[#07090f] flex items-center justify-center">
+      <div className="fg-shell min-h-screen flex items-center justify-center text-foreground">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -23,7 +23,7 @@ export default function TradingJournalPage() {
   }
 
   return (
-    <div className="fg-shell min-h-screen pb-20 text-foreground bg-[#07090f]">
+    <div className="fg-shell min-h-screen pb-20 text-foreground">
       <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         
         <header className="fg-panel flex flex-col items-start justify-between gap-4 rounded-lg p-6 sm:flex-row sm:items-center md:p-8">

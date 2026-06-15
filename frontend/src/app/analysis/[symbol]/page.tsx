@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -487,27 +487,8 @@ function AnalysisDetailInner({ symbol }: { symbol: string }) {
 }
 
 export default function AnalysisDetailPage({ params }: { params: Promise<{ symbol: string }> }) {
-  const [resolvedSymbol, setResolvedSymbol] = useState<string | null>(null);
-
-  useEffect(() => {
-    Promise.resolve(params).then((p) => {
-      const sym = decodeURIComponent(p.symbol).toUpperCase();
-      if (sym !== resolvedSymbol) {
-        setResolvedSymbol(sym);
-      }
-    });
-  }, [params, resolvedSymbol]);
-
-  if (!resolvedSymbol) {
-    return (
-      <div className="min-h-screen bg-[#faf9f6] flex items-center justify-center">
-        <div className="relative">
-          <div className="w-10 h-10 rounded-full border-2 border-slate-200 border-t-slate-800 animate-spin" />
-          <Activity className="w-4 h-4 text-slate-800 absolute inset-0 m-auto animate-pulse" />
-        </div>
-      </div>
-    );
-  }
+  const resolvedParams = use(params);
+  const resolvedSymbol = decodeURIComponent(resolvedParams.symbol).toUpperCase();
 
   return <AnalysisDetailInner symbol={resolvedSymbol} />;
 }

@@ -43,8 +43,8 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
   // Determine stroke color based on current score
   const getStrokeColor = (val: number) => {
     if (val <= 20) return '#ef4444'; // red
-    if (val <= 40) return '#f97316'; // orange
-    if (val <= 60) return '#eab308'; // yellow
+    if (val <= 40) return '#ea580c'; // orange primary brand
+    if (val <= 60) return '#d97706'; // yellow/amber
     if (val <= 80) return '#84cc16'; // lime
     return '#22c55e'; // green
   };
@@ -68,7 +68,7 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
   const subStrokeDashoffset = subCircumference - (confluence / 100) * subCircumference;
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl h-[280px]">
+    <div className="flex flex-col items-center justify-center p-6 bg-card border border-border rounded-2xl shadow-sm h-[280px]">
       <div className="relative w-64 h-36 flex items-end justify-center overflow-hidden">
         {/* SVG Viewport */}
         <svg className="absolute top-0 w-64 h-64 transform rotate-180" viewBox="0 0 200 200">
@@ -78,7 +78,7 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
             cy="100"
             r={radius}
             fill="none"
-            stroke="#1e293b"
+            stroke="var(--border)"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={0}
@@ -104,7 +104,7 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
             cy="100"
             r={subRadius}
             fill="none"
-            stroke="#1e293b"
+            stroke="var(--border)"
             strokeWidth={subStrokeWidth}
             strokeDasharray={subCircumference}
             strokeDashoffset={0}
@@ -116,7 +116,7 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
             cy="100"
             r={subRadius}
             fill="none"
-            stroke="#38bdf8" // sky blue for confluence
+            stroke="#0284c7" // sky blue for confluence
             strokeWidth={subStrokeWidth}
             strokeDasharray={subCircumference}
             strokeDashoffset={subStrokeDashoffset}
@@ -126,7 +126,7 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
 
         {/* Text values in center */}
         <div className="flex flex-col items-center mb-1 z-10">
-          <span className="text-5xl font-bold tracking-tight text-white select-none">
+          <span className="text-5xl font-bold tracking-tight text-foreground select-none">
             {Math.round(animatedScore)}
           </span>
           <span 
@@ -139,20 +139,20 @@ export default function TechnicalStrengthGauge({ score, rating, confluence }: Ga
       </div>
 
       {/* Footer labels */}
-      <div className="w-full flex items-center justify-between border-t border-slate-800/60 pt-4 mt-2">
+      <div className="w-full flex items-center justify-between border-t border-border pt-4 mt-2">
         <div className="flex flex-col">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
             Strength Score
           </span>
-          <span className="text-sm font-semibold text-slate-300">
+          <span className="text-sm font-semibold text-foreground">
             {score} / 100
           </span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
             Confluence level
           </span>
-          <span className="text-sm font-semibold text-sky-400">
+          <span className="text-sm font-semibold text-sky-600 dark:text-sky-400">
             {confluence}% Agreement
           </span>
         </div>

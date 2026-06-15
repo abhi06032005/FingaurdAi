@@ -22,11 +22,11 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
   }
   if (!stockData) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 text-center max-w-md w-full">
-          <h2 className="text-xl font-bold text-slate-800 mb-2">Data not found</h2>
-          <p className="text-slate-600 mb-6">We could not load the data for {ticker}.</p>
-          <Link href="/stocks" className="text-blue-600 hover:underline inline-flex items-center">
+      <div className="fg-shell min-h-screen text-foreground flex items-center justify-center p-4">
+        <div className="bg-card p-8 rounded-xl shadow-sm border border-border text-center max-w-md w-full">
+          <h2 className="text-xl font-bold text-foreground mb-2">Data not found</h2>
+          <p className="text-muted-foreground mb-6">We could not load the data for {ticker}.</p>
+          <Link href="/stocks" className="text-primary hover:underline inline-flex items-center">
             <Search className="w-4 h-4 mr-2" />
             Back to Search
           </Link>
@@ -52,31 +52,31 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
     }
 
     return (
-      <section className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-8 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+      <section className="bg-card rounded-xl border border-border overflow-hidden mb-8 shadow-sm">
+        <div className="px-6 py-4 border-b border-border bg-muted/30 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           {subtitle && (
-            <span className="text-xs text-slate-500 font-medium tracking-wide uppercase hidden sm:block">
+            <span className="text-xs text-muted-foreground font-medium tracking-wide uppercase hidden sm:block">
               {subtitle}
             </span>
           )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-white border-b border-slate-200">
+            <thead className="bg-card border-b border-border">
               <tr>
-                <th className="px-6 py-3 font-medium text-slate-500 w-64 bg-slate-50/30 sticky left-0 z-10">Metric</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground w-64 bg-muted/10 sticky left-0 z-10">Metric</th>
                 {periods.map(p => (
-                  <th key={p} className="px-4 py-3 font-medium text-slate-600 text-right whitespace-nowrap">{p}</th>
+                  <th key={p} className="px-4 py-3 font-medium text-muted-foreground text-right whitespace-nowrap">{p}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {data.map((row, i) => {
                 const rowLabel = row.Metric || row[''] || '';
                 return (
-                  <tr key={i} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-6 py-3 font-medium text-slate-700 bg-white group-hover:bg-slate-50/80 sticky left-0 z-10 whitespace-nowrap border-r border-slate-100/50">
+                  <tr key={i} className="hover:bg-muted/50 transition-colors group">
+                    <td className="px-6 py-3 font-medium text-foreground bg-card group-hover:bg-muted/50 sticky left-0 z-10 whitespace-nowrap border-r border-border">
                       {rowLabel}
                     </td>
                     {periods.map(p => {
@@ -100,9 +100,9 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
                               displayVal = val.toLocaleString('en-IN');
                             } else {
                               displayVal = val.toLocaleString('en-IN', {
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 2
-                              });
+                                  minimumFractionDigits: 0,
+                                  maximumFractionDigits: 2
+                                });
                             }
                           }
                         } else {
@@ -112,7 +112,7 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
 
                       return (
                         <td key={p} className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
-                          <span className={isNegative ? "text-red-600" : "text-slate-800"}>
+                          <span className={isNegative ? "text-rose-650 dark:text-rose-450" : "text-foreground"}>
                             {displayVal}
                           </span>
                         </td>
@@ -131,19 +131,19 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
   const renderCagrTable = (title: string, data: any[]) => {
     if (!data || data.length === 0) return null;
     return (
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm flex-1">
-        <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/50">
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm flex-1">
+        <div className="px-4 py-3 border-b border-border bg-muted/30">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         <table className="w-full text-sm text-left">
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {data.map((row, i) => {
               const key = Object.keys(row)[0];
               const val = row[key];
               return (
-                <tr key={i} className="hover:bg-slate-50/80">
-                  <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{key}</td>
-                  <td className="px-4 py-2.5 text-right font-medium tabular-nums text-slate-800">{val}%</td>
+                <tr key={i} className="hover:bg-muted/50">
+                  <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{key}</td>
+                  <td className="px-4 py-2.5 text-right font-medium tabular-nums text-foreground">{val}%</td>
                 </tr>
               )
             })}
@@ -237,20 +237,20 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] text-slate-900 font-sans selection:bg-blue-100 pb-20">
+    <div className="fg-shell min-h-screen text-foreground font-sans pb-20">
       
       {/* Top Navbar Simulation */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+      <div className="bg-background/95 border-b border-border sticky top-0 z-50 shadow-sm backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/stocks" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-bold tracking-tight text-xl">
-            Screener<span className="text-slate-800">Demo</span>
+          <Link href="/stocks" className="flex items-center gap-2 text-primary hover:text-primary/95 font-bold tracking-tight text-xl">
+            Screener<span className="text-foreground">Demo</span>
           </Link>
           <div className="relative hidden md:block w-96">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input 
               type="text" 
               placeholder={`Search for a company`} 
-              className="w-full bg-slate-100 border-none rounded-md pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              className="w-full bg-muted border border-border rounded-md pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground"
               defaultValue={ticker}
             />
           </div>
@@ -260,17 +260,17 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
       <main className="max-w-7xl mx-auto px-4 py-8">
         
         {/* Header Section */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 md:p-8 mb-8 shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 mb-6">
+        <div className="bg-card rounded-xl border border-border p-6 md:p-8 mb-8 shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border pb-6 mb-6">
             <div>
-              <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{stockData.company_name}</h1>
-              <div className="flex gap-4 mt-2 text-sm text-blue-600 font-medium">
+              <h1 className="text-3xl font-extrabold text-foreground tracking-tight">{stockData.company_name}</h1>
+              <div className="flex gap-4 mt-2 text-sm text-primary font-medium">
                 <a href="#" className="hover:underline flex items-center">BSE: 532540</a>
                 <a href="#" className="hover:underline flex items-center">NSE: {ticker}</a>
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="px-4 py-2 text-sm font-medium border border-slate-300 rounded-md hover:bg-slate-50 bg-white transition-colors flex items-center shadow-sm text-slate-700">
+              <button className="px-4 py-2 text-sm font-medium border border-border rounded-xl hover:bg-muted bg-card transition-colors flex items-center shadow-sm text-foreground cursor-pointer">
                 + ADD TO WATCHLIST
               </button>
             </div>
@@ -279,10 +279,10 @@ export default async function StockPage({ params }: { params: Promise<{ ticker: 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-8 gap-x-8">
             {topStats.map((stat, idx) => (
               <div key={idx} className="flex flex-col">
-                <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">{stat.label}</span>
+                <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider mb-1.5">{stat.label}</span>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl md:text-2xl font-bold text-slate-800 tabular-nums">{stat.value}</span>
-                  {stat.suffix && <span className="text-sm font-semibold text-slate-500">{stat.suffix}</span>}
+                  <span className="text-xl md:text-2xl font-bold text-foreground tabular-nums">{stat.value}</span>
+                  {stat.suffix && <span className="text-sm font-semibold text-muted-foreground">{stat.suffix}</span>}
                 </div>
               </div>
             ))}

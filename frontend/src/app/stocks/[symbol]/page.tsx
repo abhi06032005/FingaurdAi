@@ -41,43 +41,43 @@ export default async function StockAnalysisPage({ params }: PageProps) {
 
   if (!analysis) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center px-4">
+      <div className="fg-shell min-h-screen text-foreground flex flex-col justify-center px-4">
         <ErrorFallback />
         <DisclaimerBanner />
       </div>
     );
   }
 
-  const priceColor = analysis.priceChangePct >= 0 ? 'text-emerald-400' : 'text-rose-400';
+  const priceColor = analysis.priceChangePct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-650 dark:text-rose-450';
   const priceSign = analysis.priceChangePct >= 0 ? '+' : '';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20 pt-6 px-4 md:px-8">
+    <div className="fg-shell min-h-screen text-foreground pb-20 pt-6 px-4 md:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Navigation / Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
           <div className="flex items-center gap-4">
             <Link 
               href="/stocks"
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:text-white transition duration-150 active:scale-95"
+              className="p-2 rounded-xl bg-card border border-border hover:bg-muted text-foreground transition duration-150 active:scale-95 shadow-sm"
             >
               <ArrowLeft size={18} />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white tracking-tight">{analysis.symbol}</h1>
-                <span className="text-xs text-slate-500 bg-slate-900 border border-slate-800 rounded px-1.5 py-0.5 font-mono select-none">
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">{analysis.symbol}</h1>
+                <span className="text-xs text-muted-foreground bg-card border border-border rounded px-1.5 py-0.5 font-mono select-none">
                   NIFTY 50
                 </span>
               </div>
-              <p className="text-sm text-slate-400">{analysis.companyName}</p>
+              <p className="text-sm text-muted-foreground">{analysis.companyName}</p>
             </div>
           </div>
 
           {/* Pricing Quote info */}
           <div className="flex flex-col md:items-end">
-            <div className="text-2xl font-bold tracking-tight text-white font-mono">
+            <div className="text-2xl font-bold tracking-tight text-foreground font-mono">
               ₹{analysis.currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className={`text-sm font-semibold font-mono ${priceColor}`}>

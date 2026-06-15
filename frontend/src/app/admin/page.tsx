@@ -73,10 +73,6 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Throw 404 if running in production
-  if (process.env.NODE_ENV === "production") {
-    notFound();
-  }
 
   // Fetch stock statuses when authenticated
   useEffect(() => {
@@ -284,51 +280,56 @@ export default function AdminDashboard() {
     return matchesSearch && matchesFilter;
   });
 
-  // If not authenticated, render beautiful premium dark authentication portal
+  // Throw 404 if running in production
+  if (process.env.NODE_ENV === "production") {
+    notFound();
+  }
+
+  // If not authenticated, render beautiful premium authentication portal
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#050506] text-slate-100 flex flex-col justify-center items-center py-20 px-4 relative overflow-hidden select-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[160px] pointer-events-none z-0"></div>
-        <div className="absolute top-[20%] left-[20%] w-[300px] h-[300px] bg-indigo-600/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      <div className="min-h-screen bg-background text-foreground flex flex-col justify-center items-center py-20 px-4 relative overflow-hidden select-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[160px] pointer-events-none z-0"></div>
+        <div className="absolute top-[20%] left-[20%] w-[300px] h-[300px] bg-accent/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-        <Card className="w-full max-w-md border-white/10 bg-slate-950/40 backdrop-blur-xl shadow-2xl relative z-10 p-4">
+        <Card className="w-full max-w-md border-border bg-card backdrop-blur-xl shadow-md relative z-10 p-4">
           <CardHeader className="text-center space-y-3">
-            <div className="bg-violet-600/15 text-violet-400 p-3.5 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
+            <div className="bg-primary/15 text-primary p-3.5 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
               <Lock className="h-6 w-6 animate-pulse" />
             </div>
-            <CardTitle className="text-2xl font-extrabold text-white tracking-tight">Admin Authentication</CardTitle>
-            <CardDescription className="text-xs text-slate-400">
+            <CardTitle className="text-2xl font-extrabold text-foreground tracking-tight">Admin Authentication</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
               Access stock ingestion controls and report generation.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold text-slate-400">Admin Username</label>
+                <label className="text-xs font-semibold text-muted-foreground">Admin Username</label>
                 <Input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter admin username..."
-                  className="bg-[#0c0d12] border-white/10 text-white placeholder-slate-600 focus:border-violet-500 rounded-xl"
+                  className="bg-muted border-border text-foreground placeholder-muted-foreground focus-visible:ring-primary/50 rounded-xl"
                   required
                 />
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold text-slate-400">Admin Password</label>
+                <label className="text-xs font-semibold text-muted-foreground">Admin Password</label>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter system secret key..."
-                  className="bg-[#0c0d12] border-white/10 text-white placeholder-slate-600 focus:border-violet-500 rounded-xl"
+                  className="bg-muted border-border text-foreground placeholder-muted-foreground focus-visible:ring-primary/50 rounded-xl"
                   required
                 />
               </div>
 
               {loginError && (
-                <div className="flex items-center gap-2 border border-red-500/20 bg-red-500/5 text-red-400 text-xs p-3 rounded-xl">
+                <div className="flex items-center gap-2 border border-destructive/25 bg-destructive/5 text-destructive text-xs p-3 rounded-xl">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>{loginError}</span>
                 </div>
@@ -337,7 +338,7 @@ export default function AdminDashboard() {
               <Button
                 type="submit"
                 disabled={loginLoading}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold h-11 rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {loginLoading ? (
                   <>
@@ -351,8 +352,8 @@ export default function AdminDashboard() {
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="justify-center border-t border-white/5 pt-4 mt-6">
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">
+          <CardFooter className="justify-center border-t border-border pt-4 mt-6">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
               FinGuard AI Secure Portal
             </span>
           </CardFooter>
@@ -362,19 +363,19 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050506] text-slate-100 py-10 px-4 md:px-8 relative overflow-x-hidden">
-      <div className="absolute top-0 right-[-100px] w-[500px] h-[500px] bg-violet-600/5 rounded-full blur-[180px] pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-background text-foreground py-10 px-4 md:px-8 relative overflow-x-hidden">
+      <div className="absolute top-0 right-[-100px] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[180px] pointer-events-none z-0"></div>
 
       <div className="max-w-7xl mx-auto space-y-8 relative z-10">
         
         {/* Portal Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-6 gap-4">
+        <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-6 gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-extrabold flex items-center tracking-tight text-white gap-2">
-              <Database className="w-8 h-8 text-violet-500" />
+            <h1 className="text-3xl font-extrabold flex items-center tracking-tight text-foreground gap-2">
+              <Database className="w-8 h-8 text-primary" />
               Stock Ingestion Console
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Manage stock report ingestions, sync data, and configure background crawlers.
             </p>
           </div>
@@ -382,7 +383,7 @@ export default function AdminDashboard() {
             <Button
               onClick={handleLogout}
               variant="outline"
-              className="border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 text-xs h-9 cursor-pointer"
+              className="border-border bg-card text-foreground hover:bg-muted text-xs h-9 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5 mr-1.5" /> Sign Out
             </Button>
@@ -391,8 +392,8 @@ export default function AdminDashboard() {
 
         {/* Ingestion progress bar banner */}
         {isBulkScraping && (
-          <Card className="border-primary/20 bg-slate-900/50 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[3px] bg-slate-800">
+          <Card className="border-border bg-card backdrop-blur-xl shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-muted">
               <div
                 className="h-full bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0}%` }}
@@ -404,17 +405,17 @@ export default function AdminDashboard() {
                   <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-white">Ingestion In Progress</h3>
-                  <p className="text-sm text-slate-400 mt-1 flex items-center">
+                  <h3 className="font-bold text-lg text-foreground">Ingestion In Progress</h3>
+                  <p className="text-sm text-muted-foreground mt-1 flex items-center">
                     Scraping data for <Badge variant="outline" className="ml-1.5 text-primary border-primary/30 bg-primary/5">{progress.ticker}</Badge>
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-semibold text-slate-300">
+                <div className="text-sm font-semibold text-foreground">
                   {progress.current} / {progress.total} Companies Syncing
                 </div>
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-muted-foreground mt-1">
                   Completed: {progress.completed.length} | Failed: {progress.failed.length}
                 </div>
               </div>
@@ -425,18 +426,18 @@ export default function AdminDashboard() {
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Nifty 100 Companies", value: companies.length, desc: "Onboarded Tickers", color: "border-slate-800 bg-slate-900/40" },
-            { label: "Ingested Reports", value: companies.filter((c) => c.status === "Completed").length, desc: "Ready for Analysis", color: "border-emerald-500/20 bg-emerald-950/10 text-emerald-400" },
-            { label: "Pending Ingestion", value: companies.filter((c) => c.status !== "Completed" && c.status !== "Failed").length, desc: "Scrape Required", color: "border-amber-500/20 bg-amber-950/10 text-amber-400" },
-            { label: "Failed Operations", value: companies.filter((c) => c.status === "Failed").length, desc: "Need Admin Sync", color: "border-rose-500/20 bg-rose-950/10 text-rose-400" }
+            { label: "Nifty 100 Companies", value: companies.length, desc: "Onboarded Tickers", color: "border-border bg-card" },
+            { label: "Ingested Reports", value: companies.filter((c) => c.status === "Completed").length, desc: "Ready for Analysis", color: "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400" },
+            { label: "Pending Ingestion", value: companies.filter((c) => c.status !== "Completed" && c.status !== "Failed").length, desc: "Scrape Required", color: "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400" },
+            { label: "Failed Operations", value: companies.filter((c) => c.status === "Failed").length, desc: "Need Admin Sync", color: "border-rose-500/20 bg-rose-500/5 text-rose-650 dark:text-rose-450" }
           ].map((stat) => (
-            <Card key={stat.label} className={`border ${stat.color} shadow-lg backdrop-blur-md text-left`}>
+            <Card key={stat.label} className={`border ${stat.color} shadow-sm backdrop-blur-md text-left`}>
               <CardHeader className="pb-2">
-                <CardDescription className="text-xs font-semibold uppercase tracking-wider text-slate-400">{stat.label}</CardDescription>
+                <CardDescription className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{stat.label}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-extrabold text-white">{loadingCompanies ? <Loader2 className="w-6 h-6 animate-spin" /> : stat.value}</div>
-                <p className="text-xs text-slate-500 mt-1.5 flex items-center">
+                <div className="text-3xl font-extrabold text-foreground">{loadingCompanies ? <Loader2 className="w-6 h-6 animate-spin" /> : stat.value}</div>
+                <p className="text-xs text-muted-foreground mt-1.5 flex items-center">
                   {stat.desc} <ArrowUpRight className="w-3 h-3 ml-1 opacity-50" />
                 </p>
               </CardContent>
@@ -445,28 +446,28 @@ export default function AdminDashboard() {
         </div>
 
         {/* Logs terminal box */}
-        <Card className="border-slate-800 bg-slate-950 shadow-inner">
-          <CardHeader className="pb-3 border-b border-slate-900 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center text-slate-300">
+        <Card className="border-border bg-card shadow-sm">
+          <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center text-foreground">
               <Terminal className="w-4 h-4 mr-2 text-primary" /> Ingestion Logging Console
             </CardTitle>
-            <Badge variant="outline" className="border-slate-800 text-[10px] text-slate-500 uppercase tracking-widest bg-slate-900">
+            <Badge variant="outline" className="border-border text-[10px] text-muted-foreground uppercase tracking-widest bg-muted">
               Live stdout
             </Badge>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="h-44 overflow-y-auto font-mono text-xs space-y-2 bg-[#05080f] p-4 rounded border border-slate-900 text-slate-300 select-all scrollbar-thin text-left">
+            <div className="h-44 overflow-y-auto font-mono text-xs space-y-2 bg-muted/40 p-4 rounded border border-border text-foreground select-all scrollbar-thin text-left">
               {logs.length === 0 ? (
-                <div className="text-slate-600 italic select-none">Console is quiet... trigger bulk ingestion to display active scraping operations.</div>
+                <div className="text-muted-foreground italic select-none">Console is quiet... trigger bulk ingestion to display active scraping operations.</div>
               ) : (
                 logs.map((log, index) => {
-                  let color = "text-slate-400";
-                  if (log.type === "success") color = "text-emerald-400";
-                  if (log.type === "error") color = "text-rose-400";
-                  if (log.type === "warn") color = "text-amber-400";
+                  let color = "text-muted-foreground";
+                  if (log.type === "success") color = "text-emerald-600 dark:text-emerald-400";
+                  if (log.type === "error") color = "text-rose-650 dark:text-rose-400";
+                  if (log.type === "warn") color = "text-amber-600 dark:text-amber-400";
                   return (
                     <div key={index} className="flex items-start leading-relaxed">
-                      <span className="text-slate-600 select-none mr-2">[{log.timestamp}]</span>
+                      <span className="text-muted-foreground/60 select-none mr-2">[{log.timestamp}]</span>
                       <span className={color}>{log.text}</span>
                     </div>
                   );
@@ -481,19 +482,19 @@ export default function AdminDashboard() {
         <div className="space-y-4">
           
           {/* Controls, Filters & Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/30 p-4 rounded-xl border border-slate-800/80">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search symbol (e.g. INFY)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-[#0b101c] border-slate-800 text-slate-200 placeholder-slate-600 focus:border-primary/50"
+                className="pl-9 bg-muted border-border text-foreground placeholder-muted-foreground focus-visible:ring-primary/50"
               />
             </div>
             
             <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-              <Filter className="w-4 h-4 text-slate-500 mr-2 flex-shrink-0" />
+              <Filter className="w-4 h-4 text-muted-foreground mr-2 flex-shrink-0" />
               {(["All", "Completed", "Pending", "Failed"] as const).map((filter) => (
                 <Button
                   key={filter}
@@ -502,20 +503,20 @@ export default function AdminDashboard() {
                   size="sm"
                   className={`flex-shrink-0 text-xs font-semibold ${
                     statusFilter === filter
-                      ? "bg-primary text-white"
-                      : "border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-800/65"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   {filter}
                 </Button>
               ))}
-              <div className="border-l border-slate-800 h-6 mx-2 hidden sm:block"></div>
+              <div className="border-l border-border h-6 mx-2 hidden sm:block"></div>
               {isBulkScraping ? (
                 <Button onClick={handleStopBulk} variant="destructive" size="sm" className="shadow-lg hover:shadow-destructive/20 h-8 text-xs cursor-pointer">
                   <Square className="w-3.5 h-3.5 mr-1" /> Abort Bulk
                 </Button>
               ) : (
-                <Button onClick={handleStartBulk} size="sm" className="bg-primary hover:bg-primary/90 text-white shadow-lg h-8 text-xs cursor-pointer">
+                <Button onClick={handleStartBulk} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm h-8 text-xs cursor-pointer">
                   <Play className="w-3.5 h-3.5 mr-1" /> Bulk Scrape
                 </Button>
               )}
@@ -524,19 +525,19 @@ export default function AdminDashboard() {
 
           {/* Companies badges list */}
           {loadingCompanies ? (
-            <div className="flex items-center justify-center py-20 text-slate-500">
+            <div className="flex items-center justify-center py-20 text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin mr-3 text-primary" /> Loading company list...
             </div>
           ) : filteredCompanies.length === 0 ? (
-            <div className="text-center py-20 border-2 border-dashed border-slate-800/60 rounded-xl text-slate-600">
+            <div className="text-center py-20 border-2 border-dashed border-border rounded-xl text-muted-foreground">
               No tickers matched the selected filters.
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3.5">
               {filteredCompanies.map((c) => {
-                let badgeClass = "border-slate-800 bg-slate-900/30 text-slate-500";
-                if (c.status === "Completed") badgeClass = "border-emerald-500/20 bg-emerald-950/10 text-emerald-400 hover:border-emerald-400/40";
-                if (c.status === "Failed") badgeClass = "border-rose-500/20 bg-rose-950/10 text-rose-400 hover:border-rose-400/40";
+                let badgeClass = "border-border bg-card text-muted-foreground";
+                if (c.status === "Completed") badgeClass = "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:border-emerald-400/40";
+                if (c.status === "Failed") badgeClass = "border-rose-500/20 bg-rose-500/5 text-rose-650 dark:text-rose-400 hover:border-rose-400/40";
                 if (c.status === "Scraping") badgeClass = "border-primary/20 bg-primary/10 text-primary border-dashed animate-pulse";
 
                 const isSyncing = actionLoading === c.ticker || c.status === "Scraping";
@@ -544,10 +545,10 @@ export default function AdminDashboard() {
                 return (
                   <div
                     key={c.ticker}
-                    className={`border rounded-lg p-3 text-center flex flex-col items-center justify-between relative transition-all duration-300 ${badgeClass} shadow-md group`}
+                    className={`border rounded-lg p-3 text-center flex flex-col items-center justify-between relative transition-all duration-300 ${badgeClass} shadow-sm group`}
                   >
-                    <div className="text-[9px] text-slate-500 uppercase tracking-widest select-none">NSE</div>
-                    <div className="text-sm font-extrabold tracking-tight mt-1 text-white group-hover:text-primary transition-colors">
+                    <div className="text-[9px] text-muted-foreground uppercase tracking-widest select-none">NSE</div>
+                    <div className="text-sm font-extrabold tracking-tight mt-1 text-foreground group-hover:text-primary transition-colors">
                       {c.ticker}
                     </div>
 
@@ -556,15 +557,15 @@ export default function AdminDashboard() {
                       {c.status === "Completed" ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                       ) : c.status === "Failed" ? (
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-550 flex-shrink-0" />
                       ) : null}
 
                       {!isBulkScraping && (
                         <button
-                          onClick={() => handleSingleScrape(c.ticker)}
-                          disabled={isSyncing}
-                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 ml-1 hover:text-white transition-all disabled:opacity-50 text-slate-400 hover:scale-110 cursor-pointer"
-                          title="Ingest Ticker Now"
+                           onClick={() => handleSingleScrape(c.ticker)}
+                           disabled={isSyncing}
+                           className="opacity-0 group-hover:opacity-100 focus:opacity-100 ml-1 hover:text-foreground transition-all disabled:opacity-50 text-muted-foreground hover:scale-110 cursor-pointer"
+                           title="Ingest Ticker Now"
                         >
                           {isSyncing ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -577,7 +578,7 @@ export default function AdminDashboard() {
 
                     {/* Tooltip last sync date */}
                     {c.lastUpdated && (
-                      <div className="absolute bottom-[-24px] left-[50%] translate-x-[-50%] bg-slate-900 border border-slate-800 text-[9px] text-slate-400 rounded px-1.5 py-0.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-all shadow-xl z-20 whitespace-nowrap">
+                      <div className="absolute bottom-[-24px] left-[50%] translate-x-[-50%] bg-popover border border-border text-[9px] text-popover-foreground rounded px-1.5 py-0.5 pointer-events-none opacity-0 group-hover:opacity-100 transition-all shadow-xl z-20 whitespace-nowrap">
                         Synced: {new Date(c.lastUpdated).toLocaleDateString()}
                       </div>
                     )}

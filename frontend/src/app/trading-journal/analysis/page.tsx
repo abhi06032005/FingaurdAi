@@ -64,18 +64,6 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  if (loadingDbUser) {
-    return (
-      <div className="min-h-screen bg-[#07090f] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
-    return <JournalRestriction />;
-  }
-
   // Heatmap navigation state
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth()); // 0-indexed
@@ -365,6 +353,18 @@ export default function AnalysisPage() {
     );
   }
 
+  if (loadingDbUser) {
+    return (
+      <div className="fg-shell min-h-screen flex items-center justify-center text-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!dbUser || (dbUser.plan !== "STANDARD" && dbUser.plan !== "PREMIUM")) {
+    return <JournalRestriction />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -387,7 +387,7 @@ export default function AnalysisPage() {
           
           {/* AI Banner Action Link */}
           <Link href="/trading-journal/analysis/ai" passHref>
-            <Button size="lg" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white flex items-center gap-2 shadow-md hover:shadow-lg transition-all border-none">
+            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 shadow-md hover:shadow-lg transition-all border-none cursor-pointer">
               <Sparkles className="h-5 w-5 animate-pulse" />
               Analyze with AI
             </Button>
@@ -700,9 +700,9 @@ export default function AnalysisPage() {
                     className="relative w-44 h-44 rounded-full flex items-center justify-center shadow-inner group hover:scale-[1.02] transition-transform duration-300"
                   >
                     {/* Donut hole matching page background color */}
-                    <div className="absolute w-32 h-32 bg-[#0a0a0a] rounded-full flex flex-col items-center justify-center p-4">
+                    <div className="absolute w-32 h-32 bg-background rounded-full flex flex-col items-center justify-center p-4 border border-border">
                       <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Win Rate</span>
-                      <span className="text-3xl font-extrabold text-white">{metrics!.winRate.toFixed(1)}%</span>
+                      <span className="text-3xl font-extrabold text-foreground">{metrics!.winRate.toFixed(1)}%</span>
                       <span className="text-[9px] text-muted-foreground mt-0.5">
                         {metrics!.winCount} of {metrics!.totalTrades} wins
                       </span>
@@ -914,7 +914,7 @@ export default function AnalysisPage() {
                           {trade.lessonLearned && (
                             <div className="space-y-1">
                               <span className="text-muted-foreground font-semibold">Lessons / Feedback:</span>
-                              <p className="text-muted-foreground italic leading-relaxed text-indigo-400">{trade.lessonLearned}</p>
+                              <p className="text-muted-foreground italic leading-relaxed text-primary">{trade.lessonLearned}</p>
                             </div>
                           )}
                         </div>

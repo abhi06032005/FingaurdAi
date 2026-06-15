@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search, Loader2, AlertTriangle, TrendingUp, TrendingDown,
   Shield, BarChart3, Building2, Leaf, Target, Eye,
   ChevronRight, Minus, Star, AlertCircle, CheckCircle2,
-  Activity, Zap, Globe2, Brain
+  Activity, Zap, Globe2, Brain, ArrowRight
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -88,10 +88,10 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-slate-400 font-medium">{label}</span>
+        <span className="text-muted-foreground font-medium">{label}</span>
         <span className="font-extrabold" style={{ color }}>{value}/10</span>
       </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -103,9 +103,9 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 
 function RiskBadge({ level }: { level: string }) {
   const cfg: Record<string, { bg: string; text: string; label: string }> = {
-    high:   { bg: "bg-red-500/10 border-red-500/30",    text: "text-red-400",    label: "HIGH" },
-    medium: { bg: "bg-amber-500/10 border-amber-500/30", text: "text-amber-400",  label: "MED" },
-    low:    { bg: "bg-emerald-500/10 border-emerald-500/30", text: "text-emerald-400", label: "LOW" },
+    high:   { bg: "bg-red-500/10 border-red-500/30",    text: "text-red-650",    label: "HIGH" },
+    medium: { bg: "bg-amber-500/10 border-amber-500/30", text: "text-amber-650",  label: "MED" },
+    low:    { bg: "bg-emerald-500/10 border-emerald-500/30", text: "text-emerald-650", label: "LOW" },
   };
   const c = cfg[level?.toLowerCase()] || cfg.low;
   return (
@@ -116,23 +116,23 @@ function RiskBadge({ level }: { level: string }) {
 }
 
 function StrengthDot({ s }: { s: string }) {
-  if (s === "strong") return <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_rgba(16,185,129,0.5)]" />;
-  if (s === "moderate") return <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_6px_rgba(245,158,11,0.5)]" />;
-  return <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block" />;
+  if (s === "strong") return <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />;
+  if (s === "moderate") return <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />;
+  return <span className="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block" />;
 }
 
 function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-slate-800/80">
-      <span className="text-indigo-400 w-5 h-5 flex items-center justify-center">{icon}</span>
-      <h3 className="text-base font-extrabold text-white tracking-wider uppercase">{title}</h3>
+    <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-border">
+      <span className="text-primary w-5 h-5 flex items-center justify-center">{icon}</span>
+      <h3 className="text-base font-extrabold text-foreground tracking-wider uppercase">{title}</h3>
     </div>
   );
 }
 
 function InfoCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 md:p-8 transition-all hover:border-slate-700/50 shadow-xl ${className}`}>
+    <div className={`bg-card border border-border rounded-2xl p-6 md:p-8 transition-all hover:border-foreground/20 shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -152,18 +152,18 @@ function renderBoldText(str: string) {
 }
 
 function FormattedText({ text, className = "" }: { text?: string; className?: string }) {
-  if (!text) return <p className="text-slate-400 text-sm italic">No commentary available.</p>;
+  if (!text) return <p className="text-muted-foreground text-sm italic">No commentary available.</p>;
   
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   return (
     <div className={`space-y-3.5 ${className}`}>
       {lines.map((line, idx) => {
         // Check for bullet indicators
-        if (line.startsWith('ÔÇó') || line.startsWith('-') || line.startsWith('*')) {
-          const content = line.replace(/^[ÔÇó\-\*]\s*/, '');
+        if (line.startsWith('ÔÇó') || line.startsWith('-') || line.startsWith('*') || line.startsWith('•')) {
+          const content = line.replace(/^[ÔÇó\-\*•]\s*/, '');
           return (
-            <div key={idx} className="flex gap-2.5 text-sm text-slate-300 pl-1">
-              <span className="text-indigo-500 mt-2 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500" />
+            <div key={idx} className="flex gap-2.5 text-sm text-foreground/90 pl-1">
+              <span className="text-primary mt-2 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-primary" />
               <span className="leading-relaxed">{renderBoldText(content)}</span>
             </div>
           );
@@ -173,15 +173,15 @@ function FormattedText({ text, className = "" }: { text?: string; className?: st
         const numMatch = line.match(/^(\d+)\.\s*(.*)/);
         if (numMatch) {
           return (
-            <div key={idx} className="flex gap-2.5 text-sm text-slate-300 pl-1">
-              <span className="text-indigo-400 font-bold leading-relaxed">{numMatch[1]}.</span>
+            <div key={idx} className="flex gap-2.5 text-sm text-foreground/90 pl-1">
+              <span className="text-primary font-bold leading-relaxed">{numMatch[1]}.</span>
               <span className="leading-relaxed">{renderBoldText(numMatch[2])}</span>
             </div>
           );
         }
 
         return (
-          <p key={idx} className="text-sm text-slate-300 leading-relaxed">
+          <p key={idx} className="text-sm text-foreground/90 leading-relaxed">
             {renderBoldText(line)}
           </p>
         );
@@ -523,7 +523,7 @@ function InteractiveFinancialChart({ stockData }: { stockData: any }) {
 
         {hoveredIndex !== null && data[hoveredIndex] && (
           <div
-            className="absolute z-10 bg-slate-950/95 border border-indigo-500/30 rounded-xl p-4 shadow-2xl backdrop-blur-md pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95"
+            className="absolute z-10 bg-card border border-border rounded-xl p-4 shadow-2xl pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95"
             style={{
               left: `${Math.min(
                 width - 210,
@@ -535,33 +535,33 @@ function InteractiveFinancialChart({ stockData }: { stockData: any }) {
               top: `${padding.top - 10}px`,
             }}
           >
-            <p className="text-xs font-black text-slate-400 border-b border-slate-800 pb-1.5 mb-2 flex justify-between items-center uppercase tracking-widest">
+            <p className="text-xs font-black text-muted-foreground border-b border-border pb-1.5 mb-2 flex justify-between items-center uppercase tracking-widest">
               <span>{data[hoveredIndex].year}</span>
-              <span className="text-indigo-400 font-bold">Annual</span>
+              <span className="text-primary font-bold">Annual</span>
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between gap-6">
-                <span className="text-slate-400 font-medium">Revenue:</span>
-                <span className="text-white font-bold tabular-nums">Ôé╣{data[hoveredIndex].sales.toLocaleString("en-IN")} Cr</span>
+                <span className="text-muted-foreground font-medium">Revenue:</span>
+                <span className="text-foreground font-bold tabular-nums">₹{data[hoveredIndex].sales.toLocaleString("en-IN")} Cr</span>
               </div>
               <div className="flex justify-between gap-6">
-                <span className="text-slate-400 font-medium">Net Profit:</span>
-                <span className="text-emerald-400 font-bold tabular-nums">Ôé╣{data[hoveredIndex].profit.toLocaleString("en-IN")} Cr</span>
+                <span className="text-muted-foreground font-medium">Net Profit:</span>
+                <span className="text-emerald-600 font-bold tabular-nums">₹{data[hoveredIndex].profit.toLocaleString("en-IN")} Cr</span>
               </div>
-              <div className="flex justify-between gap-6 border-t border-slate-800/60 pt-1.5 mt-1.5 text-xs">
-                <span className="text-slate-400 font-semibold">Profit Margin (NPM):</span>
-                <span className="text-indigo-300 font-bold tabular-nums">
+              <div className="flex justify-between gap-6 border-t border-border pt-1.5 mt-1.5 text-xs">
+                <span className="text-muted-foreground font-semibold">Profit Margin (NPM):</span>
+                <span className="text-primary font-bold tabular-nums">
                   {((data[hoveredIndex].profit / data[hoveredIndex].sales) * 100).toFixed(2)}%
                 </span>
               </div>
               {hoveredIndex > 0 && data[hoveredIndex - 1] && (
-                <div className="flex justify-between gap-6 text-xs border-t border-slate-800/60 pt-1.5">
-                  <span className="text-slate-400 font-semibold">YoY Sales Growth:</span>
+                <div className="flex justify-between gap-6 text-xs border-t border-border pt-1.5">
+                  <span className="text-muted-foreground font-semibold">YoY Sales Growth:</span>
                   {(() => {
                     const diff = data[hoveredIndex].sales - data[hoveredIndex - 1].sales;
                     const pct = (diff / data[hoveredIndex - 1].sales) * 100;
                     return (
-                      <span className={`font-bold tabular-nums ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <span className={`font-bold tabular-nums ${pct >= 0 ? 'text-emerald-600' : 'text-red-650'}`}>
                         {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
                       </span>
                     );
@@ -591,7 +591,7 @@ function ShareholdingDonutChart({ stockData }: { stockData: any }) {
   const outerRadius = 95;
   const innerRadius = 65;
 
-  const COLORS = ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#64748b"];
+  const COLORS = ["#ea580c", "#f97316", "#10b981", "#eab308", "#64748b"];
 
   let currentAngle = 0;
   const slices = data.map((d, idx) => {
@@ -611,7 +611,7 @@ function ShareholdingDonutChart({ stockData }: { stockData: any }) {
   const activeSlice = hoveredIdx !== null ? slices[hoveredIdx] : null;
 
   return (
-    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-center gap-8 shadow-lg">
+    <div className="bg-card border border-border rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-center gap-8 shadow-sm">
       <div className="relative w-[240px] h-[240px] flex-shrink-0">
         <svg width="240" height="240" viewBox="0 0 240 240" className="overflow-visible">
           {slices.map((slice, idx) => {
@@ -645,19 +645,19 @@ function ShareholdingDonutChart({ stockData }: { stockData: any }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
           {activeSlice ? (
             <>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">
                 {activeSlice.category}
               </span>
-              <span className="text-xl font-black text-white mt-1.5 leading-none">
+              <span className="text-xl font-black text-foreground mt-1.5 leading-none">
                 {activeSlice.value.toFixed(2)}%
               </span>
             </>
           ) : (
             <>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">
                 Ownership Mix
               </span>
-              <span className="text-xs font-bold text-indigo-400 mt-2 leading-tight uppercase tracking-wider">
+              <span className="text-xs font-bold text-primary mt-2 leading-tight uppercase tracking-wider">
                 Latest Qtr
               </span>
             </>
@@ -666,7 +666,7 @@ function ShareholdingDonutChart({ stockData }: { stockData: any }) {
       </div>
 
       <div className="flex-1 space-y-4 w-full">
-        <span className="text-xs font-black text-slate-500 uppercase tracking-widest block">Shareholding Structure</span>
+        <span className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Shareholding Structure</span>
         <div className="grid grid-cols-2 sm:grid-cols-1 gap-2.5">
           {slices.map((slice, idx) => {
             const isHovered = hoveredIdx === idx;
@@ -677,8 +677,8 @@ function ShareholdingDonutChart({ stockData }: { stockData: any }) {
                 onMouseLeave={() => setHoveredIdx(null)}
                 className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${
                   isHovered
-                    ? "bg-indigo-950/20 border-indigo-500/35 text-white shadow-md shadow-indigo-500/5"
-                    : "bg-slate-950/40 border-slate-800/40 text-slate-300"
+                    ? "bg-primary/10 border-primary/30 text-foreground shadow-md shadow-primary/5"
+                    : "bg-muted/10 border-border text-muted-foreground"
                 }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -739,22 +739,22 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
   };
 
   return (
-    <div className="relative bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 w-full shadow-lg">
+    <div className="relative bg-card border border-border rounded-2xl p-6 md:p-8 w-full shadow-sm">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
         <div>
-          <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Zap className="w-5 h-5 text-indigo-400" /> Quarterly Sales & Net Profit
+          <h4 className="text-sm font-black text-primary uppercase tracking-widest flex items-center gap-1.5">
+            <Zap className="w-5 h-5 text-primary" /> Quarterly Sales & Net Profit
           </h4>
-          <p className="text-xs text-slate-500 mt-1">Dual-axis view (Left: Sales, Right: Net Profit)</p>
+          <p className="text-xs text-muted-foreground mt-1">Dual-axis view (Left: Sales, Right: Net Profit)</p>
         </div>
         <div className="flex gap-4 text-xs uppercase font-bold tracking-wider">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]" />
-            <span className="text-slate-300">Sales</span>
+            <span className="w-2.5 h-2.5 rounded bg-primary shadow-[0_0_8px_rgba(234,88,12,0.4)]" />
+            <span className="text-muted-foreground">Sales</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-            <span className="text-slate-300">Net Profit</span>
+            <span className="text-muted-foreground">Net Profit</span>
           </div>
         </div>
       </div>
@@ -787,11 +787,11 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
           <path
             d={salesPath}
             fill="none"
-            stroke="#6366f1"
+            stroke="var(--primary)"
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            filter="drop-shadow(0 0 4px rgba(99,102,241,0.3))"
+            filter="drop-shadow(0 0 4px rgba(234,88,12,0.3))"
           />
 
           {/* Profit area & line */}
@@ -822,8 +822,8 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
                   cx={pSales.x}
                   cy={pSales.y}
                   r={isHovered ? 6 : 4}
-                  fill="#07090f"
-                  stroke="#6366f1"
+                  fill="var(--background)"
+                  stroke="var(--primary)"
                   strokeWidth={isHovered ? 3 : 2}
                   className="transition-all duration-200 cursor-pointer"
                   onMouseEnter={() => setHoveredIdx(idx)}
@@ -833,7 +833,7 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
                   cx={pProfit.x}
                   cy={pProfit.y}
                   r={isHovered ? 6 : 4}
-                  fill="#07090f"
+                  fill="var(--background)"
                   stroke="#10b981"
                   strokeWidth={isHovered ? 3 : 2}
                   className="transition-all duration-200 cursor-pointer"
@@ -843,7 +843,7 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
                 <text
                   x={pSales.x}
                   y={padding.top + chartHeight + 18}
-                  fill={isHovered ? "#ffffff" : "#64748b"}
+                  fill={isHovered ? "var(--foreground)" : "var(--muted-foreground)"}
                   fontSize="9"
                   fontWeight="bold"
                   textAnchor="middle"
@@ -856,8 +856,8 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
 
           <defs>
             <linearGradient id="salesAreaGrad2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="profitAreaGrad2" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
@@ -868,25 +868,25 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
 
         {hoveredIdx !== null && data[hoveredIdx] && (
           <div
-            className="absolute z-10 bg-slate-950 border border-indigo-500/20 rounded-xl py-2 px-3 shadow-2xl pointer-events-none text-xs animate-in fade-in duration-100"
+            className="absolute z-10 bg-card border border-border rounded-xl py-2 px-3 shadow-2xl pointer-events-none text-xs animate-in fade-in duration-100"
             style={{
               left: `${Math.min(width - 150, Math.max(10, salesPoints[hoveredIdx].x - 70))}px`,
               top: `${Math.min(height - 90, salesPoints[hoveredIdx].y - 30)}px`,
             }}
           >
             <div className="flex flex-col space-y-1">
-              <span className="text-slate-500 font-bold border-b border-slate-800 pb-0.5 mb-0.5">{data[hoveredIdx].quarter}</span>
+              <span className="text-muted-foreground font-bold border-b border-border pb-0.5 mb-0.5">{data[hoveredIdx].quarter}</span>
               <div className="flex justify-between gap-4">
-                <span className="text-slate-400">Sales:</span>
-                <span className="text-white font-bold tabular-nums">Ôé╣{data[hoveredIdx].sales.toLocaleString("en-IN")} Cr</span>
+                <span className="text-muted-foreground">Sales:</span>
+                <span className="text-foreground font-bold tabular-nums">₹{data[hoveredIdx].sales.toLocaleString("en-IN")} Cr</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-slate-400 font-medium">Net Profit:</span>
-                <span className="text-emerald-400 font-bold tabular-nums">Ôé╣{data[hoveredIdx].profit.toLocaleString("en-IN")} Cr</span>
+                <span className="text-muted-foreground font-medium">Net Profit:</span>
+                <span className="text-emerald-600 font-bold tabular-nums">₹{data[hoveredIdx].profit.toLocaleString("en-IN")} Cr</span>
               </div>
-              <div className="flex justify-between gap-4 border-t border-slate-800/60 pt-0.5 text-[10px]">
-                <span className="text-slate-400 font-semibold">OPM %:</span>
-                <span className="text-indigo-300 font-bold">
+              <div className="flex justify-between gap-4 border-t border-border pt-0.5 text-[10px]">
+                <span className="text-muted-foreground font-semibold">OPM %:</span>
+                <span className="text-primary font-bold">
                   {((data[hoveredIdx].profit / data[hoveredIdx].sales) * 100).toFixed(1)}%
                 </span>
               </div>
@@ -906,25 +906,25 @@ function CAGRScorecardGrid({ stockData }: { stockData: any }) {
   }
 
   const sections = [
-    { title: "Compounded Sales Growth", data: rates.sales, color: "text-indigo-400", bg: "border-indigo-500/10 hover:border-indigo-500/20" },
-    { title: "Compounded Profit Growth", data: rates.profit, color: "text-emerald-400", bg: "border-emerald-500/10 hover:border-emerald-500/20" },
-    { title: "Stock Price CAGR", data: rates.stock, color: "text-amber-400", bg: "border-amber-500/10 hover:border-amber-500/20" },
-    { title: "Return on Equity (ROE)", data: rates.roe, color: "text-violet-400", bg: "border-violet-500/10 hover:border-violet-500/20" },
+    { title: "Compounded Sales Growth", data: rates.sales, color: "text-primary", bg: "border-primary/20 hover:border-primary/45" },
+    { title: "Compounded Profit Growth", data: rates.profit, color: "text-emerald-600", bg: "border-emerald-500/10 hover:border-emerald-500/20" },
+    { title: "Stock Price CAGR", data: rates.stock, color: "text-amber-600", bg: "border-amber-500/10 hover:border-amber-500/20" },
+    { title: "Return on Equity (ROE)", data: rates.roe, color: "text-violet-600", bg: "border-violet-500/10 hover:border-violet-500/20" },
   ];
 
   return (
-    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-6 md:p-8 space-y-6 shadow-lg">
-      <span className="text-xs font-black text-slate-500 uppercase tracking-widest block">Compounded Growth & Efficiency Metrics</span>
+    <div className="bg-card border border-border rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
+      <span className="text-xs font-black text-muted-foreground uppercase tracking-widest block">Compounded Growth & Efficiency Metrics</span>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {sections.map((sect) => {
           if (sect.data.length === 0) return null;
           return (
-            <div key={sect.title} className={`bg-slate-950/60 border rounded-xl p-5 space-y-4 transition-all hover:shadow-md ${sect.bg}`}>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">{sect.title}</span>
+            <div key={sect.title} className={`bg-muted/30 border border-border rounded-xl p-5 space-y-4 transition-all hover:shadow-md ${sect.bg}`}>
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider block">{sect.title}</span>
               <div className="space-y-3">
                 {sect.data.map((item) => (
                   <div key={item.period} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400 font-semibold">{item.period}</span>
+                    <span className="text-muted-foreground font-semibold">{item.period}</span>
                     <span className={`font-extrabold tabular-nums ${sect.color}`}>{item.value}%</span>
                   </div>
                 ))}
@@ -946,16 +946,16 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
     <div className="space-y-8 animate-in fade-in duration-500">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">{report.company_name} ({report.ticker})</h2>
-          <p className="text-indigo-400 text-base mt-1 font-medium">{report.executive_summary?.one_liner}</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight">{report.company_name} ({report.ticker})</h2>
+          <p className="text-primary text-base mt-1 font-medium">{report.executive_summary?.one_liner}</p>
         </div>
-        <div className="flex flex-col items-end gap-1.5 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5 font-semibold text-slate-400">
-            <Brain className="w-4 h-4 text-indigo-400" /> AI Report ┬À {gen}
+        <div className="flex flex-col items-end gap-1.5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+            <Brain className="w-4 h-4 text-primary" /> AI Report · {gen}
           </span>
-          <span className="font-medium">{report.data_sources?.annual_reports_count} annual report(s) ┬À {report.data_sources?.fiscal_years_covered?.join(", ")}</span>
+          <span className="font-medium">{report.data_sources?.annual_reports_count} annual report(s) · {report.data_sources?.fiscal_years_covered?.join(", ")}</span>
         </div>
       </div>
 
@@ -1025,8 +1025,8 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <QuarterlyTrendChart stockData={stockData} />
-            <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-6 md:p-8 space-y-4">
-              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">Latest Quarter Highlights</span>
+            <div className="bg-card border border-border rounded-2xl p-6 md:p-8 space-y-4">
+              <span className="text-xs font-black text-primary uppercase tracking-widest block">Latest Quarter Highlights</span>
               <FormattedText text={report.financial_snapshot?.quarterly_highlights} />
             </div>
           </div>
@@ -1040,38 +1040,38 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
             { label: "Margin Analysis", value: report.financial_snapshot?.margin_analysis },
             { label: "Cash Flow Dynamics", value: report.financial_snapshot?.cash_flow_summary },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-5 space-y-3">
-              <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">{label}</span>
+            <div key={label} className="bg-card border border-border rounded-2xl p-5 space-y-3">
+              <span className="text-xs font-black text-primary uppercase tracking-widest block">{label}</span>
               <FormattedText text={value} />
             </div>
           ))}
         </div>
 
-        <div className="bg-slate-950/80 border border-slate-800/60 rounded-2xl p-6 md:p-8 space-y-3">
-          <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block">Balance Sheet Capital Structure</span>
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 space-y-3">
+          <span className="text-xs font-black text-primary uppercase tracking-widest block">Balance Sheet Capital Structure</span>
           <FormattedText text={report.financial_snapshot?.balance_sheet_health} />
         </div>
 
         {/* Key Ratios Table */}
         {report.financial_snapshot?.key_ratios?.length > 0 && (
           <div className="mt-8">
-            <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block mb-4">Longitudinal Return & Efficiency Ratios</span>
-            <div className="overflow-x-auto border border-slate-800/60 rounded-2xl">
+            <span className="text-xs font-black text-primary uppercase tracking-widest block mb-4">Longitudinal Return & Efficiency Ratios</span>
+            <div className="overflow-x-auto border border-border rounded-2xl">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/50">
+                  <tr className="border-b border-border bg-muted/50">
                     {["Ratio Name", "Latest Value", "Benchmark Target", "Strategic Interpretation"].map(h => (
-                      <th key={h} className="text-left py-4 px-5 text-slate-400 font-black uppercase tracking-wider text-xs">{h}</th>
+                      <th key={h} className="text-left py-4 px-5 text-muted-foreground font-black uppercase tracking-wider text-xs">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/40 bg-slate-950/20">
+                <tbody className="divide-y divide-border bg-card">
                   {report.financial_snapshot.key_ratios.map((r) => (
-                    <tr key={r.name} className="hover:bg-indigo-950/5 transition-all">
-                      <td className="py-4 px-5 font-semibold text-white">{r.name}</td>
-                      <td className="py-4 px-5 text-indigo-300 font-bold tabular-nums">{r.value}</td>
-                      <td className="py-4 px-5 text-slate-400">{r.benchmark || "ÔÇö"}</td>
-                      <td className="py-4 px-5 text-slate-300 leading-relaxed font-medium">{r.interpretation}</td>
+                    <tr key={r.name} className="hover:bg-primary/5 transition-all">
+                      <td className="py-4 px-5 font-semibold text-foreground">{r.name}</td>
+                      <td className="py-4 px-5 text-primary font-bold tabular-nums">{r.value}</td>
+                      <td className="py-4 px-5 text-muted-foreground">{r.benchmark || "—"}</td>
+                      <td className="py-4 px-5 text-foreground/90 leading-relaxed font-medium">{r.interpretation}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1085,18 +1085,18 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
       <div className="space-y-6">
         {/* Stance Verdict Box */}
         {report.bull_bear_analysis?.verdict && (
-          <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 md:p-8 flex gap-5">
-            <CheckCircle2 className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 md:p-8 flex gap-5">
+            <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
             <div>
-              <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Lead Analyst Verdict</span>
-              <p className="text-base text-slate-100 mt-1.5 font-bold leading-relaxed">{report.bull_bear_analysis.verdict}</p>
+              <span className="text-xs font-black text-primary uppercase tracking-wider block">Lead Analyst Verdict</span>
+              <p className="text-base text-foreground mt-1.5 font-bold leading-relaxed">{report.bull_bear_analysis.verdict}</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Bulls */}
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<TrendingUp className="w-5 h-5" />} title="Key Growth Drivers (Bull Case)" />
             <div className="space-y-4">
               {report.bull_bear_analysis?.bull_case?.map((b, i) => (
@@ -1105,9 +1105,9 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
                     <StrengthDot s={b.strength} />
                   </div>
                   <div>
-                    <p className="text-base font-extrabold text-white leading-tight">{b.point}</p>
-                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
-                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-extrabold capitalize mt-2.5 inline-block tracking-wider">
+                    <p className="text-base font-extrabold text-foreground leading-tight">{b.point}</p>
+                    <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
+                    <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-extrabold capitalize mt-2.5 inline-block tracking-wider">
                       {b.strength} Evidence
                     </span>
                   </div>
@@ -1117,7 +1117,7 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
           </InfoCard>
 
           {/* Bears */}
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<TrendingDown className="w-5 h-5" />} title="Key Risks & Moat Killers (Bear Case)" />
             <div className="space-y-4">
               {report.bull_bear_analysis?.bear_case?.map((b, i) => (
@@ -1126,8 +1126,8 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
                     <RiskBadge level={b.severity} />
                   </div>
                   <div className="pt-0.5">
-                    <p className="text-base font-extrabold text-white leading-tight">{b.point}</p>
-                    <p className="text-sm text-slate-400 mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
+                    <p className="text-base font-extrabold text-foreground leading-tight">{b.point}</p>
+                    <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed font-medium">{b.evidence}</p>
                   </div>
                 </div>
               ))}
@@ -1140,27 +1140,27 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
         {/* Strategy Card */}
         <div className="space-y-6">
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<Zap className="w-5 h-5" />} title="Strategic Corporate Outlook" />
             <div className="space-y-6">
               <div>
-                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Management Guidance & Outlook</span>
+                <span className="text-xs font-black text-primary uppercase tracking-wider block">Management Guidance & Outlook</span>
                 <FormattedText text={report.strategic_outlook?.management_guidance} className="mt-1.5" />
               </div>
               <div>
-                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">CapEx Allocations</span>
+                <span className="text-xs font-black text-primary uppercase tracking-wider block">CapEx Allocations</span>
                 <FormattedText text={report.strategic_outlook?.capex_plans} className="mt-1.5" />
               </div>
               <div>
-                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Long-term Vision</span>
+                <span className="text-xs font-black text-primary uppercase tracking-wider block">Long-term Vision</span>
                 <FormattedText text={report.strategic_outlook?.long_term_vision} className="mt-1.5" />
               </div>
               <div>
-                <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">Key Growth Catalysts</span>
+                <span className="text-xs font-black text-primary uppercase tracking-wider block">Key Growth Catalysts</span>
                 <ul className="mt-3 space-y-2.5">
                   {report.strategic_outlook?.growth_catalysts?.map((c, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-300 leading-relaxed font-medium">
-                      <ChevronRight className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground/90 leading-relaxed font-medium">
+                      <ChevronRight className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                       {renderBoldText(c)}
                     </li>
                   ))}
@@ -1169,7 +1169,7 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
             </div>
           </InfoCard>
 
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<Leaf className="w-5 h-5" />} title="ESG Practices & Governance" />
             <div className="space-y-6">
               {[
@@ -1180,7 +1180,7 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
                 { label: "ESG Certifications & Ratings", value: report.esg_summary?.esg_rating_notes },
               ].map(({ label, value }) => value && (
                 <div key={label}>
-                  <span className="text-xs font-black text-indigo-400 uppercase tracking-wider block">{label}</span>
+                  <span className="text-xs font-black text-primary uppercase tracking-wider block">{label}</span>
                   <FormattedText text={value} className="mt-1.5" />
                 </div>
               ))}
@@ -1190,38 +1190,38 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
 
         {/* Risks & Monitorables Card */}
         <div className="space-y-6">
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<Shield className="w-5 h-5" />} title="Operational Risk Matrix" />
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-sm text-slate-400 font-bold">Consolidated Risk Rating:</span>
+              <span className="text-sm text-muted-foreground font-bold">Consolidated Risk Rating:</span>
               <RiskBadge level={report.risk_matrix?.overall_risk_level} />
             </div>
             <div className="space-y-4">
               {report.risk_matrix?.risks?.map((r, i) => (
-                <div key={i} className="border border-slate-800/60 bg-slate-950/40 rounded-2xl p-5 space-y-3">
+                <div key={i} className="border border-border bg-muted/30 rounded-2xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-extrabold text-white">{r.name}</span>
+                    <span className="text-sm font-extrabold text-foreground">{r.name}</span>
                     <div className="flex gap-2">
                       <RiskBadge level={r.probability} />
                       <RiskBadge level={r.impact} />
                     </div>
                   </div>
                   <div>
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Mitigation Plan</span>
-                    <p className="text-sm text-slate-300 mt-1 leading-relaxed font-medium">{r.mitigation}</p>
+                    <span className="text-[10px] font-black text-primary uppercase tracking-widest block">Mitigation Plan</span>
+                    <p className="text-sm text-foreground/90 mt-1 leading-relaxed font-medium">{r.mitigation}</p>
                   </div>
                 </div>
               ))}
             </div>
           </InfoCard>
 
-          <InfoCard className="bg-slate-900/40 backdrop-blur-sm border-slate-800/80">
+          <InfoCard>
             <SectionHeading icon={<Eye className="w-5 h-5" />} title="Key Monitorables (Watch Next 6-12 Months)" />
             <div className="grid grid-cols-1 gap-4">
               {report.key_monitorables?.map((m, i) => (
-                <div key={i} className="flex items-start gap-4 p-5 bg-slate-950/60 border border-slate-800/60 rounded-2xl transition-all hover:border-slate-700/80">
-                  <span className="text-indigo-400 font-black text-base flex-shrink-0 mt-0.5">#{i + 1}</span>
-                  <p className="text-sm text-slate-200 leading-relaxed font-bold">{renderBoldText(m)}</p>
+                <div key={i} className="flex items-start gap-4 p-5 bg-card border border-border rounded-2xl transition-all hover:border-foreground/20">
+                  <span className="text-primary font-black text-base flex-shrink-0 mt-0.5">#{i + 1}</span>
+                  <p className="text-sm text-foreground leading-relaxed font-bold">{renderBoldText(m)}</p>
                 </div>
               ))}
             </div>
@@ -1230,7 +1230,7 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
       </div>
 
       {/* Disclaimer */}
-      <p className="text-[10px] text-slate-600 text-center leading-relaxed px-4 pt-4 pb-2 border-t border-slate-800/50">
+      <p className="text-[10px] text-muted-foreground text-center leading-relaxed px-4 pt-4 pb-2 border-t border-border">
         {report.disclaimer}
       </p>
     </div>
@@ -1249,6 +1249,16 @@ export default function StocksPage() {
   const [stockData, setStockData] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [generating, setGenerating] = useState(false);
+
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchReport = async (ticker: string) => {
     const t = ticker.toUpperCase().trim();
@@ -1278,6 +1288,9 @@ export default function StocksPage() {
   const triggerGenerate = async (ticker: string) => {
     const t = ticker.toUpperCase().trim();
     setGenerating(true);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
     try {
       await fetch(`${API_BASE}/api/ai-reports/generate`, {
         method: "POST",
@@ -1285,7 +1298,7 @@ export default function StocksPage() {
         body: JSON.stringify({ ticker: t }),
       });
       // Poll after 60s
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setGenerating(false);
         fetchReport(t);
       }, 60000);
@@ -1300,35 +1313,36 @@ export default function StocksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#07090f] text-slate-100">
+    <div className="min-h-screen bg-background text-foreground pb-20 relative overflow-hidden font-sans">
       {/* Hero search */}
-      <div className="border-b border-slate-800/50 bg-gradient-to-b from-slate-900/60 to-transparent">
+      <div className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
         <div className="max-w-4xl mx-auto px-4 py-12 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-2">
             <Brain className="w-3 h-3" /> AI-Powered Equity Research
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
             Stock Intelligence
           </h1>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Type an NSE ticker to get a pre-computed, analyst-grade AI research report.
           </p>
-          <form onSubmit={handleSubmit} className="flex gap-2 max-w-lg mx-auto">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <form onSubmit={handleSubmit} className="relative w-full max-w-xl mx-auto shadow-sm">
+            <div className="relative flex items-center bg-white border border-[#e5e2dd] rounded-2xl p-1.5 focus-within:border-slate-400 focus-within:ring-1 focus-within:ring-slate-200 transition-all duration-200">
+              <Search className="w-4 h-4 text-slate-400 ml-3 flex-shrink-0" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="e.g. RELIANCE, TCS, INFYÔÇª"
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+                placeholder="What NIFTY 50 stock would you like to analyze?"
+                className="w-full bg-transparent border-0 outline-none px-3 py-2.5 text-sm text-[#191919] placeholder-slate-450 focus:ring-0 focus:outline-none"
               />
+              <button
+                type="submit"
+                className="p-2.5 bg-[#191919] text-white hover:bg-slate-800 rounded-xl transition-all duration-150 cursor-pointer flex-shrink-0"
+                aria-label="Analyze"
+              >
+                <ArrowRight size={16} />
+              </button>
             </div>
-            <button
-              type="submit"
-              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" /> Analyse
-            </button>
           </form>
         </div>
       </div>
@@ -1340,35 +1354,35 @@ export default function StocksPage() {
         {viewState === "loading" && (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <Brain className="w-5 h-5 text-indigo-400 absolute inset-0 m-auto" />
+              <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+              <Brain className="w-5 h-5 text-primary absolute inset-0 m-auto animate-pulse" />
             </div>
-            <p className="text-slate-400 text-sm animate-pulse">Fetching AI reportÔÇª</p>
+            <p className="text-muted-foreground text-sm animate-pulse">Fetching AI report...</p>
           </div>
         )}
 
         {/* Not found */}
         {viewState === "not-found" && (
           <div className="max-w-md mx-auto py-20 text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
-            <h3 className="text-xl font-bold text-white">No Report Found</h3>
-            <p className="text-slate-400 text-sm">
-              No AI report exists for <strong className="text-white">{search.toUpperCase()}</strong> yet.
+            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+            <h3 className="text-xl font-bold text-foreground">No Report Found</h3>
+            <p className="text-muted-foreground text-sm">
+              No AI report exists for <strong className="text-foreground">{search.toUpperCase()}</strong> yet.
               {generating
-                ? " Generating now ÔÇö this takes ~60 seconds. The page will refresh automatically."
+                ? " Generating now — this takes ~60 seconds. The page will refresh automatically."
                 : " Click below to generate one (requires stock data to be scraped first)."}
             </p>
             {!generating ? (
               <button
                 onClick={() => triggerGenerate(search)}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-sm transition-all inline-flex items-center gap-2"
+                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg text-sm transition-all inline-flex items-center gap-2 cursor-pointer"
               >
                 <Zap className="w-4 h-4" /> Generate Report
               </button>
             ) : (
-              <div className="flex items-center justify-center gap-2 text-indigo-400 text-sm">
+              <div className="flex items-center justify-center gap-2 text-primary text-sm font-bold">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                GeneratingÔÇª auto-refreshing in ~60s
+                Generating... auto-refreshing in ~60s
               </div>
             )}
           </div>
@@ -1377,8 +1391,8 @@ export default function StocksPage() {
         {/* Error */}
         {viewState === "error" && (
           <div className="max-w-md mx-auto py-20 text-center space-y-3">
-            <AlertTriangle className="w-10 h-10 text-red-400 mx-auto" />
-            <p className="text-red-400 font-semibold">{errorMsg}</p>
+            <AlertTriangle className="w-10 h-10 text-red-500 mx-auto" />
+            <p className="text-red-500 font-semibold">{errorMsg}</p>
           </div>
         )}
 
@@ -1390,16 +1404,16 @@ export default function StocksPage() {
         {/* Idle state */}
         {viewState === "idle" && (
           <div className="py-20 text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto">
-              <BarChart3 className="w-7 h-7 text-slate-600" />
+            <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center mx-auto shadow-sm">
+              <BarChart3 className="w-7 h-7 text-muted-foreground" />
             </div>
-            <p className="text-slate-500 text-sm">Enter a ticker above to load its AI report.</p>
+            <p className="text-muted-foreground text-sm">Enter a ticker above to load its AI report.</p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"].map((t) => (
                 <button
                   key={t}
                   onClick={() => { setSearch(t); fetchReport(t); }}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 border border-slate-800 rounded-full hover:border-indigo-500/40 hover:text-indigo-300 transition-all"
+                  className="px-3 py-1.5 text-xs font-semibold text-muted-foreground border border-border bg-card rounded-full hover:border-primary hover:text-primary transition-all cursor-pointer shadow-sm"
                 >
                   {t}
                 </button>

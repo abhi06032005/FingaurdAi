@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Check, Sparkles, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,13 +35,16 @@ export default function PlansPage() {
     alert("Free trial has been reset to 0/1 used for testing!");
   };
 
+  const verificationStarted = useRef(false);
+
   // Check query parameters for simulation/direct redirect success
   useEffect(() => {
     if (!dbUser) return;
 
     const params = new URLSearchParams(window.location.search);
     const orderIdParam = params.get("order_id");
-    if (orderIdParam) {
+    if (orderIdParam && !verificationStarted.current) {
+      verificationStarted.current = true;
       const verifyOrder = async () => {
         try {
           const token = await getToken();
@@ -62,7 +65,7 @@ export default function PlansPage() {
       };
       verifyOrder();
     }
-  }, [dbUser, syncUser]);
+  }, [dbUser, syncUser, getToken]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -141,7 +144,7 @@ export default function PlansPage() {
             contact: contactNumber,
           },
           theme: {
-            color: "#4f46e5", // Indigo 600
+            color: "#ea580c", // Orange 600
           },
           modal: {
             ondismiss: function() {
@@ -185,7 +188,7 @@ export default function PlansPage() {
         "Limited access to market news updates",
         "No trading journal database access"
       ],
-      color: "border-slate-800 bg-slate-950/40"
+      color: "border-border bg-card shadow-sm"
     },
     {
       id: "STANDARD",
@@ -203,7 +206,7 @@ export default function PlansPage() {
         "Basic Trading Journal (up to 50 logs)",
         "Email support (24h response time)"
       ],
-      color: "border-indigo-500/30 bg-slate-900/60 shadow-lg shadow-indigo-500/5",
+      color: "border-primary/30 bg-card shadow-sm shadow-primary/5",
       badge: "Popular"
     },
     {
@@ -222,30 +225,30 @@ export default function PlansPage() {
         "Export prompts for personal AI Trading Coach",
         "Priority Support (1h response time)"
       ],
-      color: "border-emerald-500/35 bg-slate-900/80 shadow-lg shadow-emerald-500/5",
+      color: "border-emerald-500/35 bg-card shadow-sm shadow-emerald-500/5",
       badge: "Elite"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-[#07090f] text-slate-100 py-16 px-4 md:px-6 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground py-16 px-4 md:px-6 relative overflow-hidden">
       {/* Background ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1200px] h-[600px] overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-250px] left-[20%] w-[40%] h-[380px] bg-indigo-500/10 rounded-full blur-[140px]" />
+        <div className="absolute top-[-250px] left-[20%] w-[40%] h-[380px] bg-primary/10 rounded-full blur-[140px]" />
         <div className="absolute top-[-150px] right-[20%] w-[40%] h-[380px] bg-emerald-500/5 rounded-full blur-[140px]" />
       </div>
 
       <div className="max-w-5xl mx-auto space-y-12 relative z-10">
         {/* Header */}
         <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold mb-2">
             <Sparkles className="w-3.5 h-3.5" /> Subscription Plans
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
             Flexible Plans for <br />
             Every Investor
           </h1>
-          <p className="text-slate-400 text-base font-medium leading-relaxed">
+          <p className="text-muted-foreground text-base font-medium leading-relaxed">
             Gain institutional-grade fundamental stock models, unlimited scam warning reports, and powerful trading calendar logs.
           </p>
         </div>
@@ -258,12 +261,12 @@ export default function PlansPage() {
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`border rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:scale-[1.01] hover:border-slate-700/80 relative ${plan.color}`}
+              className={`border border-border rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:scale-[1.01] hover:border-primary/80 relative ${plan.color}`}
             >
               {plan.badge && (
                 <span className={`absolute -top-3.5 right-6 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                   plan.badge === "Popular"
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                     : "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
                 }`}>
                   {plan.badge}
@@ -272,19 +275,19 @@ export default function PlansPage() {
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-xl font-extrabold text-white">{plan.name}</h3>
-                  <p className="text-xs text-slate-400 font-semibold mt-1.5 leading-relaxed">{plan.description}</p>
+                  <h3 className="text-xl font-extrabold text-foreground">{plan.name}</h3>
+                  <p className="text-xs text-muted-foreground font-semibold mt-1.5 leading-relaxed">{plan.description}</p>
                 </div>
 
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-white">₹{plan.price}</span>
-                  <span className="text-xs text-slate-500 font-bold">{plan.periodText || "/ mo"}</span>
+                  <span className="text-3xl font-black text-foreground">₹{plan.price}</span>
+                  <span className="text-xs text-muted-foreground font-bold">{plan.periodText || "/ mo"}</span>
                 </div>
 
-                <ul className="space-y-3.5 border-t border-slate-800/80 pt-6">
+                <ul className="space-y-3.5 border-t border-border pt-6">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-slate-300 font-bold leading-relaxed">
-                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground/90 font-bold leading-relaxed">
+                      <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -298,8 +301,8 @@ export default function PlansPage() {
                   onClick={() => handleUpgradeClick(plan.id, plan.name)}
                   className={`w-full py-6.5 rounded-2xl font-black text-xs uppercase tracking-widest cursor-pointer ${
                     plan.buttonVariant === "default"
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
-                      : "border-slate-800 hover:bg-slate-900/60 text-slate-400 hover:text-white"
+                      ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
+                      : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {plan.buttonText}
@@ -311,32 +314,32 @@ export default function PlansPage() {
 
         {/* Tester reset action for easier review */}
         <div className="pt-6 text-center">
-          <p className="text-xs text-slate-600 font-semibold">
+          <p className="text-xs text-muted-foreground font-semibold">
             Testing your integration? Click below to reset the free trial reports count back to 0.
           </p>
           <button
             onClick={resetTrial}
-            className="mt-3 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800/80 rounded-full text-xs font-bold text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            className="mt-3 px-4 py-2 bg-card hover:bg-muted border border-border rounded-full text-xs font-bold text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-sm"
           >
             Reset Free Trial Counter
           </button>
         </div>
 
         {/* FAQ box */}
-        <div className="border-t border-slate-800/60 pt-16 max-w-3xl mx-auto space-y-6">
-          <h4 className="text-lg font-extrabold text-white text-center flex items-center justify-center gap-2">
-            <HelpCircle className="w-5 h-5 text-indigo-400" /> Subscription FAQs
+        <div className="border-t border-border pt-16 max-w-3xl mx-auto space-y-6">
+          <h4 className="text-lg font-extrabold text-foreground text-center flex items-center justify-center gap-2">
+            <HelpCircle className="w-5 h-5 text-primary" /> Subscription FAQs
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
             <div className="space-y-1.5">
-              <h5 className="text-sm font-bold text-white">Can I change plans at any time?</h5>
-              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+              <h5 className="text-sm font-bold text-foreground">Can I change plans at any time?</h5>
+              <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
                 Yes, you can upgrade, downgrade, or cancel your plan at any time. When upgrading or downgrading, your billing cycles are prorated immediately.
               </p>
             </div>
             <div className="space-y-1.5">
-              <h5 className="text-sm font-bold text-white">What counts as an AI Report?</h5>
-              <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+              <h5 className="text-sm font-bold text-foreground">What counts as an AI Report?</h5>
+              <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
                 Whenever you search and generate a context audit report for a stock symbol, it consumes 1 credit. Loading a pre-computed report from cache is free for premium tiers.
               </p>
             </div>
@@ -347,17 +350,17 @@ export default function PlansPage() {
       {/* Success Modal */}
       {paymentSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="absolute -top-32 -right-32 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-card border border-border rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex flex-col items-center text-center space-y-5">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <div className="w-14 h-14 rounded-full bg-emerald-550/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
                 <Check className="w-6 h-6 animate-bounce" />
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-white tracking-tight">Upgrade Successful!</h3>
-                <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                <h3 className="text-xl font-black text-foreground tracking-tight">Upgrade Successful!</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed font-medium">
                   Congratulations! Your account has been upgraded successfully. You now have full access to analyst-grade AI stock intelligence reports.
                 </p>
               </div>
@@ -366,7 +369,7 @@ export default function PlansPage() {
                 <Link
                   href="/stocks"
                   onClick={() => setPaymentSuccess(false)}
-                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer text-center"
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer text-center font-extrabold"
                 >
                   Go to Stock Analyzer
                 </Link>
@@ -379,19 +382,19 @@ export default function PlansPage() {
       {/* Mobile Number Input Modal */}
       {showMobileModal && selectedPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-emerald-500/10 border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-card border border-border rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="space-y-5">
               <div className="text-center space-y-2">
-                <h3 className="text-xl font-black text-white tracking-tight">Enter Mobile Number</h3>
-                <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                <h3 className="text-xl font-black text-foreground tracking-tight">Enter Mobile Number</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed font-medium">
                   Please provide your contact number for payment receipt and transaction updates.
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
                   Mobile Number
                 </label>
                 <input
@@ -399,7 +402,7 @@ export default function PlansPage() {
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
                   placeholder="e.g. +91 99999 99999"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-semibold"
+                  className="w-full bg-muted border border-border rounded-2xl px-4 py-3.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all font-semibold"
                 />
               </div>
 
@@ -413,13 +416,13 @@ export default function PlansPage() {
                     setShowMobileModal(false);
                     handleUpgrade(selectedPlan.id, selectedPlan.name, mobileNumber.trim());
                   }}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer font-extrabold uppercase tracking-wider text-xs"
+                  className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl text-sm transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer font-extrabold uppercase tracking-wider text-xs"
                 >
                   Proceed to Payment
                 </button>
                 <button
                   onClick={() => setShowMobileModal(false)}
-                  className="w-full py-3 text-slate-400 hover:text-white font-bold rounded-2xl text-xs transition-colors font-bold uppercase tracking-wider"
+                  className="w-full py-3 text-muted-foreground hover:text-foreground font-bold rounded-2xl text-xs transition-colors font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Cancel
                 </button>

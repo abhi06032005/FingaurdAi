@@ -63,18 +63,18 @@ export default function OverviewCards({ analysis }: OverviewProps) {
     if (dir === 'bullish') {
       return {
         border: 'border-l-4 border-l-emerald-500',
-        badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+        badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
       };
     }
     if (dir === 'bearish') {
       return {
         border: 'border-l-4 border-l-rose-500',
-        badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        badge: 'bg-rose-500/10 text-rose-650 dark:text-rose-400 border-rose-500/20'
       };
     }
     return {
-      border: 'border-l-4 border-l-slate-600',
-      badge: 'bg-slate-800 text-slate-400 border-slate-700/50'
+      border: 'border-l-4 border-l-muted-foreground/40',
+      badge: 'bg-muted text-muted-foreground border-border'
     };
   };
 
@@ -86,13 +86,13 @@ export default function OverviewCards({ analysis }: OverviewProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
       {/* Trend Card */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between h-[130px] transition duration-200 hover:border-slate-700/60 ${trendCols.border}`}>
+      <div className={`bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between h-[130px] transition duration-200 hover:border-muted-foreground/30 ${trendCols.border}`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trend Analysis</span>
-          <TrendingUp className="text-slate-500" size={18} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trend Analysis</span>
+          <TrendingUp className="text-muted-foreground" size={18} />
         </div>
         <div className="my-2">
-          <p className="text-sm font-semibold text-white truncate">{trendSummary}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{trendSummary}</p>
         </div>
         <div className="flex">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${trendCols.badge} uppercase tracking-wider`}>
@@ -102,13 +102,13 @@ export default function OverviewCards({ analysis }: OverviewProps) {
       </div>
 
       {/* Momentum Card */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between h-[130px] transition duration-200 hover:border-slate-700/60 ${momentumCols.border}`}>
+      <div className={`bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between h-[130px] transition duration-200 hover:border-muted-foreground/30 ${momentumCols.border}`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Momentum</span>
-          <TrendingUp className="text-slate-500 rotate-90" size={18} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Momentum</span>
+          <TrendingUp className="text-muted-foreground rotate-90" size={18} />
         </div>
         <div className="my-2">
-          <p className="text-sm font-semibold text-white truncate">{momentumSummary}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{momentumSummary}</p>
         </div>
         <div className="flex">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${momentumCols.badge} uppercase tracking-wider`}>
@@ -118,13 +118,13 @@ export default function OverviewCards({ analysis }: OverviewProps) {
       </div>
 
       {/* Volatility Card */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between h-[130px] transition duration-200 hover:border-slate-700/60 ${volatilityCols.border}`}>
+      <div className={`bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between h-[130px] transition duration-200 hover:border-muted-foreground/30 ${volatilityCols.border}`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volatility</span>
-          <Activity className="text-slate-500" size={18} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Volatility</span>
+          <Activity className="text-muted-foreground" size={18} />
         </div>
         <div className="my-2">
-          <p className="text-sm font-semibold text-white truncate">{volatilitySummary}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{volatilitySummary}</p>
         </div>
         <div className="flex">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${volatilityCols.badge} uppercase tracking-wider`}>
@@ -134,13 +134,13 @@ export default function OverviewCards({ analysis }: OverviewProps) {
       </div>
 
       {/* Volume Card */}
-      <div className={`bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between h-[130px] transition duration-200 hover:border-slate-700/60 ${volumeCols.border}`}>
+      <div className={`bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between h-[130px] transition duration-200 hover:border-muted-foreground/30 ${volumeCols.border}`}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Volume & obv</span>
-          <BarChart2 className="text-slate-500" size={18} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Volume & obv</span>
+          <BarChart2 className="text-muted-foreground" size={18} />
         </div>
         <div className="my-2">
-          <p className="text-sm font-semibold text-white truncate">{volumeSummary}</p>
+          <p className="text-sm font-semibold text-foreground truncate">{volumeSummary}</p>
         </div>
         <div className="flex">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${volumeCols.badge} uppercase tracking-wider`}>

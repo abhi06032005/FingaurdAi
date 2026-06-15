@@ -14,10 +14,8 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/stocks", label: "Stock Analyzer" },
   { href: "/analysis", label: "Technical Analysis" },
-  { href: "/news", label: "News" },
   { href: "/trading-journal", label: "Trading Journal" },
   { href: "/learn", label: "Learn" },
-  { href: "/influencers", label: "Influencers" },
   { href: "/events", label: "Events" },
   { href: "/dashboard", label: "Dashboard" },
 ];
@@ -29,9 +27,6 @@ export function Navbar() {
   const { dbUser, updatePlan } = useUserDb();
   const router = useRouter();
   const [showWelcome, setShowWelcome] = useState(false);
-
-  if (pathname === "/tradespace") return null;
-
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       const welcomed = localStorage.getItem("finguard_welcomed");
@@ -49,7 +44,7 @@ export function Navbar() {
     }
     router.push("/stocks");
   };
-
+  if (pathname === "/tradespace") return null;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/70 bg-background/80 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
@@ -125,25 +120,25 @@ export function Navbar() {
       {/* Welcome Trial Modal */}
       {showWelcome && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-indigo-500/35 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Background Glow */}
-            <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-32 -right-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex flex-col items-center text-center space-y-5">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
                 <Sparkles className="w-7 h-7 animate-pulse" />
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-white tracking-tight">Claim Your Free AI Report</h3>
-                <p className="text-sm text-slate-400 leading-relaxed font-medium">
+                <h3 className="text-xl font-black text-foreground tracking-tight">Claim Your Free AI Report</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed font-medium">
                   Welcome to FinGuard AI! Start your journey by analyzing any Indian stock fundamental report for free. We've credited 1 free trial report to your account.
                 </p>
               </div>
 
               <button
                 onClick={handleClaim}
-                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl text-sm transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 Claim Free Report & Start Analysis
               </button>

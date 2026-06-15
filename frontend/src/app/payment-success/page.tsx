@@ -59,19 +59,19 @@ function PaymentSuccessContent() {
   }, [orderId, syncUser, getToken]);
 
   return (
-    <div className="min-h-screen bg-[#07090f] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="fg-shell min-h-screen text-foreground flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background ambient light */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-md w-full bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 text-center space-y-6">
+      <div className="max-w-md w-full bg-card backdrop-blur-md border border-border rounded-2xl p-6 md:p-8 shadow-md relative z-10 text-center space-y-6">
         
         {status === "verifying" && (
           <div className="space-y-4">
-            <div className="w-14 h-14 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400">
+            <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight">Verifying Payment</h2>
-            <p className="text-sm text-slate-400 leading-relaxed font-medium">
+            <h2 className="text-xl font-black text-foreground tracking-tight">Verifying Payment</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
               We are connecting with the payment gateway to verify your transaction. Please do not close or reload this page.
             </p>
           </div>
@@ -79,17 +79,17 @@ function PaymentSuccessContent() {
 
         {status === "success" && (
           <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-500">
               <CheckCircle2 className="w-6 h-6 animate-pulse" />
             </div>
-            <h2 className="text-2xl font-black text-white tracking-tight">Payment Successful!</h2>
-            <p className="text-sm text-slate-400 leading-relaxed font-medium">
+            <h2 className="text-2xl font-black text-foreground tracking-tight">Payment Successful!</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
               Thank you for your purchase. Your plan is now active! You have been successfully upgraded.
             </p>
             <div className="pt-6">
               <button
                 onClick={() => router.push("/stocks")}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-widest transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 Start Analyzing Stocks <ArrowRight className="w-4 h-4" />
               </button>
@@ -99,17 +99,17 @@ function PaymentSuccessContent() {
 
         {status === "failed" && (
           <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400">
+            <div className="w-14 h-14 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center mx-auto text-destructive">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight">Verification Failed</h2>
-            <p className="text-sm text-slate-400 leading-relaxed font-medium">
+            <h2 className="text-xl font-black text-foreground tracking-tight">Verification Failed</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed font-medium">
               {errorMessage || "We could not verify your payment transaction status at this moment."}
             </p>
             <div className="pt-6 space-y-2">
               <Link
                 href="/plans"
-                className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-muted hover:bg-muted/90 text-foreground border border-border font-bold rounded-xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
               >
                 Return to Plans
               </Link>
@@ -124,8 +124,8 @@ function PaymentSuccessContent() {
 export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#07090f] text-slate-100 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+      <div className="fg-shell min-h-screen text-foreground flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     }>
       <PaymentSuccessContent />

@@ -72,20 +72,20 @@ export default function IndicatorTable({ analysis }: TableProps) {
   const getDirectionBadge = (dir: 'bullish' | 'bearish' | 'neutral') => {
     if (dir === 'bullish') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
           Bullish
         </span>
       );
     }
     if (dir === 'bearish') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 uppercase tracking-wider">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 uppercase tracking-wider">
           Bearish
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700/50 uppercase tracking-wider">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground border border-border uppercase tracking-wider">
         Neutral
       </span>
     );
@@ -93,26 +93,26 @@ export default function IndicatorTable({ analysis }: TableProps) {
 
   const getStrengthBadge = (strength: StrengthRank) => {
     if (strength === 'strong') {
-      return <span className="text-rose-400 font-bold uppercase text-[10px] tracking-wider">Strong</span>;
+      return <span className="text-rose-650 dark:text-rose-400 font-bold uppercase text-[10px] tracking-wider">Strong</span>;
     }
     if (strength === 'moderate') {
-      return <span className="text-amber-400 font-semibold uppercase text-[10px] tracking-wider">Moderate</span>;
+      return <span className="text-amber-600 dark:text-amber-400 font-semibold uppercase text-[10px] tracking-wider">Moderate</span>;
     }
     if (strength === 'weak') {
-      return <span className="text-slate-400 font-medium uppercase text-[10px] tracking-wider">Weak</span>;
+      return <span className="text-muted-foreground font-medium uppercase text-[10px] tracking-wider">Weak</span>;
     }
-    return <span className="text-slate-600 uppercase text-[10px] tracking-wider">None</span>;
+    return <span className="text-muted-foreground/60 uppercase text-[10px] tracking-wider">None</span>;
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl w-full">
+    <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-white tracking-tight">Technical Indicators Summary</h3>
+        <h3 className="text-lg font-bold text-foreground tracking-tight">Technical Indicators Summary</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800 text-xs font-bold uppercase text-slate-400 tracking-wider">
+            <tr className="border-b border-border text-xs font-bold uppercase text-muted-foreground tracking-wider">
               <th className="py-3.5 px-4 font-semibold">Indicator</th>
               <th className="py-3.5 px-4 font-semibold">Value</th>
               <th className="py-3.5 px-4 font-semibold">Signal Analysis</th>
@@ -120,20 +120,20 @@ export default function IndicatorTable({ analysis }: TableProps) {
               <th className="py-3.5 px-4 font-semibold">
                 <button
                   onClick={handleSortStrength}
-                  className="inline-flex items-center gap-1 hover:text-white transition duration-150"
+                  className="inline-flex items-center gap-1 hover:text-foreground transition duration-150"
                 >
                   Strength
-                  <ArrowUpDown size={13} className={sortDirection ? 'text-sky-400' : 'text-slate-500'} />
+                  <ArrowUpDown size={13} className={sortDirection ? 'text-primary' : 'text-muted-foreground/50'} />
                 </button>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/40 text-sm text-slate-300">
+          <tbody className="divide-y divide-border text-sm text-muted-foreground">
             {tableRows.map((row, idx) => (
-              <tr key={idx} className="hover:bg-slate-800/20 transition duration-150">
-                <td className="py-3.5 px-4 font-semibold text-slate-200">{row.indicator}</td>
-                <td className="py-3.5 px-4 text-slate-400 tabular-nums">{row.value}</td>
-                <td className="py-3.5 px-4 text-slate-300">{row.signal}</td>
+              <tr key={idx} className="hover:bg-muted/50 transition duration-150">
+                <td className="py-3.5 px-4 font-semibold text-foreground">{row.indicator}</td>
+                <td className="py-3.5 px-4 text-muted-foreground tabular-nums">{row.value}</td>
+                <td className="py-3.5 px-4 text-muted-foreground">{row.signal}</td>
                 <td className="py-3.5 px-4">{getDirectionBadge(row.direction)}</td>
                 <td className="py-3.5 px-4">{getStrengthBadge(row.strength)}</td>
               </tr>

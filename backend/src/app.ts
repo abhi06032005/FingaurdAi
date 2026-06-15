@@ -6,7 +6,6 @@ import { errorHandler } from './middlewares/errorHandler';
 import webhookRoutes from './routes/webhooks';
 import adminRoutes from './routes/admin';
 import tradeRoutes from './routes/trades';
-import newsRoutes from './routes/newsRoutes';
 import aiReportRoutes from './routes/aiReports';
 import stocksRoutes from './routes/stocksRoutes';
 import userRoutes from './routes/users';
@@ -63,7 +62,6 @@ app.use(clerkMiddleware());
 // Mount protected routes with authenticate middleware
 app.use('/admin', adminRoutes);
 app.use('/trades', authenticate, tradeRoutes);
-app.use('/api/news', newsRoutes); // Public or protect if needed
 app.use('/api/ai-reports', aiReportRoutes);
 app.use('/api/stocks', technicalAnalysisRouter);
 app.use('/api/stocks', stocksRoutes); // Usually public
