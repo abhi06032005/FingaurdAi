@@ -14,6 +14,7 @@ import { initCronJobs } from './services/cronService';
 import { scheduleDailyIngestionJob } from './jobs/dailyIngestionJob';
 import { scheduleWeeklyCleanupJob } from './jobs/weeklyCleanupJob';
 import technicalAnalysisRouter from './routes/technicalAnalysis';
+import analysisRouter from './routes/analysis';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from './middlewares/authMiddleware';
 import { clerkMiddleware } from '@clerk/express';
@@ -64,6 +65,7 @@ app.use('/admin', adminRoutes);
 app.use('/trades', authenticate, tradeRoutes);
 app.use('/api/ai-reports', aiReportRoutes);
 app.use('/api/stocks', technicalAnalysisRouter);
+app.use('/api/analysis', analysisRouter);
 app.use('/api/stocks', stocksRoutes); // Usually public
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/payments', authenticate, paymentRoutes);

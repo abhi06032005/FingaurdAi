@@ -19,6 +19,7 @@ const cronService_1 = require("./services/cronService");
 const dailyIngestionJob_1 = require("./jobs/dailyIngestionJob");
 const weeklyCleanupJob_1 = require("./jobs/weeklyCleanupJob");
 const technicalAnalysis_1 = __importDefault(require("./routes/technicalAnalysis"));
+const analysis_1 = __importDefault(require("./routes/analysis"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const authMiddleware_1 = require("./middlewares/authMiddleware");
 const express_2 = require("@clerk/express");
@@ -63,6 +64,7 @@ app.use('/admin', admin_1.default);
 app.use('/trades', authMiddleware_1.authenticate, trades_1.default);
 app.use('/api/ai-reports', aiReports_1.default);
 app.use('/api/stocks', technicalAnalysis_1.default);
+app.use('/api/analysis', analysis_1.default);
 app.use('/api/stocks', stocksRoutes_1.default); // Usually public
 app.use('/api/users', authMiddleware_1.authenticate, users_1.default);
 app.use('/api/payments', authMiddleware_1.authenticate, payments_1.default);
