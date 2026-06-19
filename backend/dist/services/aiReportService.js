@@ -24,18 +24,19 @@ exports.gatherCompanyData = gatherCompanyData;
 exports.buildAnalysisPrompt = buildAnalysisPrompt;
 exports.generateAndStoreAIReport = generateAndStoreAIReport;
 require("dotenv/config"); // must be first — loads env vars before any SDK client init
-const groq_sdk_1 = __importDefault(require("groq-sdk"));
+const generative_ai_1 = require("@google/generative-ai");
 const Stock_1 = __importDefault(require("../models/Stock"));
 const AnnualReport_1 = require("../models/AnnualReport");
 const CompanyAIReport_1 = require("../models/CompanyAIReport");
-// ── Groq client (lazy — always reads env var at call time, never at module load) ───
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile';
-const FALLBACK_MODEL = 'llama-3.1-8b-instant';
-function getGroq() {
-    const apiKey = process.env.GROQ_API_KEY;
+const geminiRateLimiter_1 = require("../utils/geminiRateLimiter");
+// ── Gemini client (lazy — always reads env var at call time, never at module load) ───
+const PRIMARY_MODEL = 'gemini-2.0-flash';
+const FALLBACK_MODEL = 'gemini-2.5-pro';
+function getGemini() {
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey)
-        throw new Error('GROQ_API_KEY is not set in environment variables');
-    return new groq_sdk_1.default({ apiKey });
+        throw new Error('GEMINI_API_KEY is not set in environment variables');
+    return new generative_ai_1.GoogleGenerativeAI(apiKey);
 }
 function delay(ms) {
     return new Promise((r) => setTimeout(r, ms));
@@ -289,140 +290,205 @@ function buildAnalysisPrompt(bundle) {
     for (const report of annualReports) {
         const r = report;
         parts.push(`\n### FY: ${r.fiscal_year || 'N/A'}`);
-        // Business
+        if (r.business_summary) {
+            parts.push(`Business Summary: ${r.business_summary}`);
+        }
+        // Business Overview
         const bd = r.business_description;
         if (bd) {
             parts.push(`Sector: ${bd.sector || 'N/A'}`);
             parts.push(`Model: ${bd.business_model || 'N/A'}`);
-            const adv = topLine(bd.competitive_advantages, 3);
-            if (adv !== 'N/A')
-                parts.push(`Moats: ${adv}`);
-            const segs = topLine(bd.segments, 4);
-            if (segs !== 'N/A')
-                parts.push(`Segments: ${segs}`);
+            if (Array.isArray(bd.competitive_advantages) && bd.competitive_advantages.length > 0) {
+                parts.push(`Competitive Advantages / Economic Moats: ${bd.competitive_advantages.join('; ')}`);
+            }
+            if (Array.isArray(bd.segments) && bd.segments.length > 0) {
+                parts.push(`Key Business Segments: ${bd.segments.join('; ')}`);
+            }
+            if (Array.isArray(bd.products) && bd.products.length > 0) {
+                parts.push(`Key Products: ${bd.products.join('; ')}`);
+            }
+            if (Array.isArray(bd.services) && bd.services.length > 0) {
+                parts.push(`Key Services: ${bd.services.join('; ')}`);
+            }
+            if (Array.isArray(bd.revenue_drivers) && bd.revenue_drivers.length > 0) {
+                parts.push(`Revenue Drivers: ${bd.revenue_drivers.join('; ')}`);
+            }
+            if (Array.isArray(bd.geographies) && bd.geographies.length > 0) {
+                parts.push(`Geographical Footprint: ${bd.geographies.join('; ')}`);
+            }
         }
-        // CEO tone + achievements (brief)
+        // CEO Message & Tone
         const ceo = r.ceo_message;
-        if (ceo?.summary) {
-            parts.push(`\nCEO tone: ${ceo.tone || 'N/A'} | ${ceo.summary}`);
-            const ach = top(ceo.key_achievements, 2);
-            if (ach.length)
-                parts.push(`Achievements: ${ach.join('; ')}`);
-            const pri = top(ceo.priorities_for_next_year, 2);
-            if (pri.length)
-                parts.push(`Priorities: ${pri.join('; ')}`);
+        if (ceo) {
+            if (ceo.summary)
+                parts.push(`\nCEO Address Summary (Tone: ${ceo.tone || 'N/A'}): ${ceo.summary}`);
+            if (ceo.vision)
+                parts.push(`CEO Long-term Vision: ${ceo.vision}`);
+            if (Array.isArray(ceo.key_achievements) && ceo.key_achievements.length > 0) {
+                parts.push(`CEO Highlighted Achievements: ${ceo.key_achievements.join('; ')}`);
+            }
+            if (Array.isArray(ceo.priorities_for_next_year) && ceo.priorities_for_next_year.length > 0) {
+                parts.push(`CEO Priorities for Coming Year: ${ceo.priorities_for_next_year.join('; ')}`);
+            }
+            if (Array.isArray(ceo.notable_quotes) && ceo.notable_quotes.length > 0) {
+                parts.push(`CEO Key Quotes: ${ceo.notable_quotes.join('; ')}`);
+            }
         }
         // MD&A
         const md = r.management_discussion;
         if (md) {
             if (md.revenue_explanation)
-                parts.push(`\nRevenue: ${md.revenue_explanation}`);
+                parts.push(`\nMD&A Revenue Commentary: ${md.revenue_explanation}`);
             if (md.profit_explanation)
-                parts.push(`Profit: ${md.profit_explanation}`);
-            const gd = topLine(md.growth_drivers, 3);
-            if (gd !== 'N/A')
-                parts.push(`Growth drivers: ${gd}`);
-            const ch = topLine(md.challenges, 2);
-            if (ch !== 'N/A')
-                parts.push(`Challenges: ${ch}`);
-            const fs = topLine(md.future_strategy, 2);
-            if (fs !== 'N/A')
-                parts.push(`Strategy: ${fs}`);
+                parts.push(`MD&A Profit/Margin Commentary: ${md.profit_explanation}`);
+            if (md.demand_outlook)
+                parts.push(`MD&A Market Demand Outlook: ${md.demand_outlook}`);
+            if (Array.isArray(md.growth_drivers) && md.growth_drivers.length > 0) {
+                parts.push(`Key Industry Growth Drivers: ${md.growth_drivers.join('; ')}`);
+            }
+            if (Array.isArray(md.challenges) && md.challenges.length > 0) {
+                parts.push(`Identified Operational Challenges: ${md.challenges.join('; ')}`);
+            }
+            if (Array.isArray(md.future_strategy) && md.future_strategy.length > 0) {
+                parts.push(`Corporate Strategic Outlook: ${md.future_strategy.join('; ')}`);
+            }
+            if (Array.isArray(md.industry_trends) && md.industry_trends.length > 0) {
+                parts.push(`MD&A Industry Trends: ${md.industry_trends.join('; ')}`);
+            }
+            if (Array.isArray(md.key_highlights) && md.key_highlights.length > 0) {
+                parts.push(`Other Key MD&A Highlights: ${md.key_highlights.join('; ')}`);
+            }
         }
-        // Industry (only for latest report)
+        // Industry Outlook & Context
         if (report === annualReports[0]) {
             const io = r.industry_outlook;
             if (io) {
-                const parts2 = [];
+                parts.push(`\nIndustry Outlook (Sector: ${io.sector || 'N/A'}):`);
                 if (io.market_size)
-                    parts2.push(`Market: ${io.market_size}`);
+                    parts.push(`  Market Size / Addressable Market: ${io.market_size}`);
                 if (io.growth_rate)
-                    parts2.push(`Growth: ${io.growth_rate}`);
-                if (parts2.length)
-                    parts.push(`\nIndustry — ${parts2.join(' | ')}`);
-                const tw = topLine(io.tailwinds, 2);
-                if (tw !== 'N/A')
-                    parts.push(`Tailwinds: ${tw}`);
-                const hw = topLine(io.headwinds, 2);
-                if (hw !== 'N/A')
-                    parts.push(`Headwinds: ${hw}`);
+                    parts.push(`  Expected Sector Growth Rate: ${io.growth_rate}`);
+                if (Array.isArray(io.tailwinds) && io.tailwinds.length > 0) {
+                    parts.push(`  Industry Tailwinds: ${io.tailwinds.join('; ')}`);
+                }
+                if (Array.isArray(io.headwinds) && io.headwinds.length > 0) {
+                    parts.push(`  Industry Headwinds / Barriers: ${io.headwinds.join('; ')}`);
+                }
+                if (io.regulatory_environment)
+                    parts.push(`  Regulatory Context: ${io.regulatory_environment}`);
+                if (Array.isArray(io.key_trends) && io.key_trends.length > 0) {
+                    parts.push(`  Sector Key Trends: ${io.key_trends.join('; ')}`);
+                }
+                if (io.competitive_landscape)
+                    parts.push(`  Competitive Landscape Structure: ${io.competitive_landscape}`);
             }
             // Guidance
             const g = r.guidance;
-            if (g?.management_outlook) {
-                parts.push(`\nGuidance: ${g.management_outlook}`);
+            if (g) {
+                parts.push(`\nManagement Outlook & Forecasts (Confidence: ${g.confidence_level || 'N/A'}):`);
+                if (g.management_outlook)
+                    parts.push(`  Management Commentary: ${g.management_outlook}`);
                 if (g.revenue_guidance)
-                    parts.push(`Revenue target: ${g.revenue_guidance}`);
+                    parts.push(`  Revenue Growth Guidance: ${g.revenue_guidance}`);
                 if (g.margin_guidance)
-                    parts.push(`Margin target: ${g.margin_guidance}`);
-                if (g.confidence_level)
-                    parts.push(`Confidence: ${g.confidence_level}`);
+                    parts.push(`  Operating Margin Guidance: ${g.margin_guidance}`);
+                if (g.volume_guidance)
+                    parts.push(`  Volume Growth target: ${g.volume_guidance}`);
+                if (Array.isArray(g.key_assumptions) && g.key_assumptions.length > 0) {
+                    parts.push(`  Key Model Assumptions: ${g.key_assumptions.join('; ')}`);
+                }
+                if (Array.isArray(g.near_term_focus) && g.near_term_focus.length > 0) {
+                    parts.push(`  Near-term Strategic Focus: ${g.near_term_focus.join('; ')}`);
+                }
             }
-            // CapEx (top 3 only)
+            // CapEx Plans
             if (Array.isArray(r.capex_plans) && r.capex_plans.length > 0) {
-                parts.push(`\nCapEx (${r.total_capex_guidance || 'guidance N/A'}):`);
-                r.capex_plans.slice(0, 3).forEach((cp) => {
-                    parts.push(`  • ${cp.project} | ${cp.cost || 'cost N/A'} | ${cp.status || ''} | ${cp.completion || ''}`);
+                parts.push(`\nPlanned Capital Expenditures (Total Budget Guidance: ${r.total_capex_guidance || 'N/A'}):`);
+                r.capex_plans.forEach((cp) => {
+                    parts.push(`  • Project: ${cp.project || 'N/A'} | Type: ${cp.type || 'N/A'} | Budgeted Cost: ${cp.cost || 'N/A'} | Location: ${cp.location || 'N/A'} | Status: ${cp.status || 'N/A'} | Timeline: ${cp.completion || 'N/A'} | Added Capacity: ${cp.capacity_addition || 'N/A'} | Rationale: ${cp.strategic_rationale || 'N/A'}`);
                 });
             }
         }
-        // Risks — top 4, High/Medium only
-        const risks = (r.risk_factors || [])
-            .filter((rf) => rf.impact === 'High' || rf.impact === 'Medium' || rf.impact === 'high' || rf.impact === 'medium')
-            .slice(0, 4);
-        if (risks.length > 0) {
-            parts.push(`\nKey Risks:`);
-            risks.forEach((rf) => {
-                parts.push(`  [${rf.impact}] ${rf.risk} — mitigation: ${rf.mitigation || 'N/A'}`);
+        // Corporate Actions
+        if (Array.isArray(r.corporate_actions) && r.corporate_actions.length > 0) {
+            parts.push(`\nCorporate Actions, M&A & Joint Ventures:`);
+            r.corporate_actions.forEach((ca) => {
+                parts.push(`  • [${ca.type || 'Action'}] Partner/Target: ${ca.entity || 'N/A'} | Transaction Value: ${ca.value || 'N/A'} | Timing: ${ca.date || 'N/A'} | Strategic Impact: ${ca.impact || 'N/A'} | Rationale: ${ca.rationale || 'N/A'}`);
             });
         }
-        // Audit opinion (one line)
-        const opinion = r.overall_audit_opinion;
-        if (opinion)
-            parts.push(`\nAudit: ${opinion}`);
-        // ESG — only CSR spend + top 1 environmental
+        // Risk Factors
+        if (Array.isArray(r.risk_factors) && r.risk_factors.length > 0) {
+            parts.push(`\nKey Risk Factors & Mitigations:`);
+            r.risk_factors.forEach((rf) => {
+                parts.push(`  • [${rf.impact || 'Medium'} Impact] Risk: ${rf.risk || 'N/A'} (Category: ${rf.category || 'N/A'}) - Description: ${rf.description || 'N/A'} - Mitigation: ${rf.mitigation || 'N/A'}`);
+            });
+        }
+        // Auditor remarks
+        if (Array.isArray(r.auditor_remarks) && r.auditor_remarks.length > 0) {
+            parts.push(`\nAuditor Opinion and Remarks (Overall Opinion: ${r.overall_audit_opinion || 'clean'}):`);
+            r.auditor_remarks.forEach((am) => {
+                parts.push(`  • Type: ${am.type || 'Remark'} (Severity: ${am.severity || 'green'}) - Auditor Notes: ${am.description || 'N/A'} - Financial Impact: ${am.financial_impact || 'N/A'}`);
+            });
+        }
+        // ESG highlights
         const esg = r.esg_highlights;
-        if (esg?.csr_spend)
-            parts.push(`CSR spend: ${esg.csr_spend}`);
-        // Operational KPIs — top 4
+        if (esg) {
+            parts.push(`\nESG Performance:`);
+            if (esg.csr_spend)
+                parts.push(`  CSR Spend: ${esg.csr_spend}`);
+            if (Array.isArray(esg.environmental) && esg.environmental.length > 0)
+                parts.push(`  Environmental Initiatives: ${esg.environmental.join('; ')}`);
+            if (Array.isArray(esg.social) && esg.social.length > 0)
+                parts.push(`  Social & Employee Programs: ${esg.social.join('; ')}`);
+            if (Array.isArray(esg.governance) && esg.governance.length > 0)
+                parts.push(`  Board Governance & Controls: ${esg.governance.join('; ')}`);
+            if (Array.isArray(esg.certifications) && esg.certifications.length > 0)
+                parts.push(`  Accreditations & Certifications: ${esg.certifications.join('; ')}`);
+            if (Array.isArray(esg.esg_ratings) && esg.esg_ratings.length > 0)
+                parts.push(`  Third-Party ESG Ratings: ${esg.esg_ratings.join('; ')}`);
+            if (Array.isArray(esg.sustainability_goals) && esg.sustainability_goals.length > 0)
+                parts.push(`  Sustainability Goals: ${esg.sustainability_goals.join('; ')}`);
+        }
+        // Operational KPIs
         const metrics = r.operational_metrics?.metrics;
         if (Array.isArray(metrics) && metrics.length > 0) {
-            parts.push(`\nOperational KPIs:`);
-            metrics.slice(0, 4).forEach((m) => {
-                parts.push(`  ${m.name}: ${m.value} (${m.trend})`);
+            parts.push(`\nOperational KPIs (Sector Category: ${r.operational_metrics.sector_type || 'N/A'}):`);
+            metrics.forEach((m) => {
+                parts.push(`  • ${m.name || 'N/A'}: ${m.value || 'N/A'} | Trend: ${m.trend || 'stable'} | Context: ${m.comment || 'N/A'}`);
             });
         }
-        // AI context — already distilled, send as-is if available
+        // AI context
         const ai = r.ai_context;
         if (ai?.bull_points?.length || ai?.bear_points?.length) {
-            parts.push(`\nPrior AI context:`);
+            parts.push(`\nSynthesized Analyst Summary:`);
             if (ai.one_liner)
-                parts.push(`  Summary: ${ai.one_liner}`);
-            const bulls = top(ai.bull_points, 2);
-            if (bulls.length)
-                parts.push(`  Bulls: ${bulls.join('; ')}`);
-            const bears = top(ai.bear_points, 2);
-            if (bears.length)
-                parts.push(`  Bears: ${bears.join('; ')}`);
+                parts.push(`   Bloomberg One-Liner: ${ai.one_liner}`);
+            if (Array.isArray(ai.bull_points))
+                parts.push(`  Bull Arguments: ${ai.bull_points.join('; ')}`);
+            if (Array.isArray(ai.bear_points))
+                parts.push(`  Bear Arguments: ${ai.bear_points.join('; ')}`);
         }
     }
     // ── INSTRUCTION BLOCK ────────────────────────────────────────────────────
     const instruction = `
 ## ROLE
-You are a Senior Equity Research Analyst translating complex institutional financial data into clear, objective, and highly actionable research insights. Your analysis is presented to sophisticated retail and institutional investors. Your tone must be cold, analytical, and data-driven, yet highly structured, readable, and engaging.
+You are a Managing Director of Equity Research at a tier-1 investment bank (such as JP Morgan or Goldman Sachs). You write exhaustive, high-conviction, professional investment research reports for sophisticated institutional asset managers.
 
-## MANDATORY RULES:
-1. NO REPETITION: Do not copy the same insights or sentences across multiple JSON fields. Every section must cover a unique angle. For example, do not repeat the exact same revenue or profit details in the Executive Summary, Investment Thesis, Revenue Trend, and Verdict.
-2. USE EXACT NUMBERS: Every financial claim must cite exact figures, periods, and YoY% / CAGR from the data tables (e.g. "Revenue grew 6.1% to ₹1,41,823 Cr in Mar 2026").
-3. BANNED PHRASES: Do not use vague terms like "robust growth", "strong performance", "solid results", "significant improvement", "well-positioned". Instead, use exact margins, CAGRs, or basis point changes (e.g. "OPM compressed 600bps from 14% to 8%").
-4. BUSINESS REASONING: Explain the "why" behind the numbers using the CEO message and MD&A details (e.g. explain that margin expansion was driven by a shift to premium products or lower raw material expenses, rather than just stating "margins increased").
-5. ALL RATIOS MUST BE INTERPRETED: Do not just list ratios; explain what they mean for the company's financial health (e.g. "A Cash Conversion Cycle of -29 days indicates excellent working capital bargaining power over suppliers").
-
-## KEY FINANCIAL FRAMEWORKS TO APPLY:
-- **DuPont Decomposition of ROE**: Analyze the return on equity over time using profitability (Net Profit Margin), asset turn (Sales / Total Assets), and leverage multiplier (Total Assets / Equity).
-- **Working Capital & Cash Conversion Cycle**: Track Debtor Days, Inventory Days, and Days Payable to explain trends in cash generation.
-- **Capital Allocation Cycle**: Compare Free Cash Flow (FCF) and Operating Cash Flow (OCF) against capital expenditure plans (CWIP and Fixed Assets) and changes in Borrowings to assess how expansion is funded.
-- **Earnings Quality**: Evaluate earnings quality using the ratio of Cash Flow from Operations to Operating Profit (CFO/OP) and FCF to Net Profit (FCF/PAT).
+Your analysis style is:
+- **Exhaustive & Comprehensive**: Write in-depth, long, analysis-heavy prose. Avoid short summaries. Every text section must be long, dense, and provide deep strategic insights.
+- **Deep-Dive Rationale**: Never write high-level lists without context. Explain the underlying unit economics, sector dynamics, raw material movements, input-cost fluctuations, and strategic management shifts.
+- **Strictly Data-Backed**: Every analytical assertion must be backed by quoting specific figures, years, basis point shifts, or growth rates.
+- **Zero Repetition (Critical)**: Each JSON field must represent a completely distinct analytical angle. Do not copy-paste or repeat descriptions across different sections. Specifically:
+  - **executive_summary.company_overview**: Focus ONLY on core business model, segments, size, scale, and competitive positioning (moat). DO NOT discuss margins, FCF, or future guidance here.
+  - **executive_summary.investment_thesis**: Focus ONLY on future long-term compounding growth catalysts, macro/industry tailwinds, and the single most critical structural threat (thesis-killer).
+  - **financial_snapshot.revenue_trend**: Focus ONLY on multi-year revenue growth. Cite 3Y/5Y/10Y Sales CAGRs. Explain using business segments.
+  - **financial_snapshot.profit_trend**: Focus ONLY on net profit growth (PAT). Cite PAT CAGRs. Explain factors like tax rate shifts, interest expenses, or other non-operating income contribution.
+  - **financial_snapshot.margin_analysis**: Focus ONLY on OPM % trajectory, gross margin trends, raw material pricing pressure, capacity utilization, and operating leverage.
+  - **financial_snapshot.balance_sheet_health**: Focus ONLY on borrowings, reserves, Debt-to-Equity ratio, fixed assets additions, and CWIP (Capital Work in Progress) growth.
+  - **financial_snapshot.cash_flow_summary**: Focus ONLY on CFO, FCF, FCF/PAT conversion ratio, and earnings quality (CFO/OP). Detail how capex is funded.
+  - **strategic_outlook.management_guidance**: Focus ONLY on management's targets, revenue growth guidance, operating margin targets, volume growth targets, and key near-term focus.
+  - **strategic_outlook.capex_plans**: Focus ONLY on greenfield and brownfield projects, project costs, timelines, capacity additions, and strategic rationale.
+  - **strategic_outlook.long_term_vision**: Focus ONLY on the 5-10 year corporate roadmap, digital leadership goals, sustainability targets (e.g. net-zero), and promoter alignment.
 
 ## JSON FORMATTING INSTRUCTIONS:
 - Return ONLY a single valid JSON object matching the schema below.
@@ -431,9 +497,9 @@ You are a Senior Equity Research Analyst translating complex institutional finan
 
 {
   "executive_summary": {
-    "company_overview": "A detailed 3-paragraph summary of the company's business model, its key operating segments, current scale (quoting exact sales and margins), and its position in the industry.",
+    "company_overview": "A detailed 3-paragraph institutional-grade analysis of the company's business model, segments, size, scale, and strategic position.",
     "one_liner": "A single Bloomberg-terminal style sentence: '[Company Name] is a [industry segment] leader with ₹[latest revenue] Cr in revenue, driven by [core growth engine] and insulated by a [specific moat].'",
-    "investment_thesis": "A substantive analysis (2 paragraphs) outlining the key reasons to own this stock (citing historical Sales/Profit CAGR and ROE track records) and the single most critical thesis-killer (risk) that could impair the thesis."
+    "investment_thesis": "A substantive, 2-paragraph investment thesis detailing long-term structural drivers, economic moats, and the most critical risk that would impair the thesis."
   },
   "financial_snapshot": {
     "revenue_trend": "A detailed analysis of the multi-year revenue trend. Cite the 3Y, 5Y, and 10Y CAGRs. Contrast historical years with the latest annual figure (FY25/FY26) and explain the growth drivers or decelerations using business segments.",
@@ -523,98 +589,108 @@ You are a Senior Equity Research Analyst translating complex institutional finan
     "<#3: Watch [metric] — [threshold and implication]>",
     "<#4: Watch [metric] — [threshold and implication]>"
   ],
-  "disclaimer": "This AI-generated report is for informational purposes only and does not constitute investment advice. Past performance is not indicative of future results. Consult a SEBI-registered investment advisor before making any investment decisions."
+  "disclaimer": "This AI-generated report is for investment bank analyst usage and sophisticated investment decision support. Past performance is not indicative of future results."
 }`;
     parts.push(instruction);
     return parts.join('\n');
 }
-// ═════════════════════════════════════════════════════════════════════════════
-// GROQ CALL
-// ═════════════════════════════════════════════════════════════════════════════
-async function callGroqForReport(prompt) {
-    const modelLimits = {
-        [PRIMARY_MODEL]: { tpm: 12000, defaultMaxOut: 3500 },
-        [FALLBACK_MODEL]: { tpm: 6000, defaultMaxOut: 2000 },
-    };
+// ─────────────────────────────────────────────────────────────────────────────
+// GEMINI CALL
+// ─────────────────────────────────────────────────────────────────────────────
+async function callGeminiForReport(prompt) {
     for (const model of [PRIMARY_MODEL, FALLBACK_MODEL]) {
-        try {
-            const config = modelLimits[model] || { tpm: 6000, defaultMaxOut: 2000 };
-            // Calculate token allocation to avoid 413/429 TPM exceptions
-            // 1 token ~= 3.8 characters on average
-            const maxAllowedTotalTokens = config.tpm;
-            // We want to reserve enough tokens for output
-            const reserveOutput = config.defaultMaxOut;
-            const maxAllowedInputTokens = maxAllowedTotalTokens - reserveOutput - 400; // 400 buffer
-            const maxPromptChars = Math.floor(maxAllowedInputTokens * 3.8);
-            let modelPrompt = prompt;
-            if (prompt.length > maxPromptChars) {
-                console.warn(`[AIReport] ⚠ Truncating prompt for ${model} rate-limit protection: ${prompt.length} -> ${maxPromptChars} chars`);
-                modelPrompt = prompt.slice(0, maxPromptChars) + '\n\n[DATA TRUNCATED TO FIT MODEL RATE LIMITS - ANALYSE WHAT IS AVAILABLE ABOVE]';
-            }
-            const estimatedInputTokens = Math.ceil(modelPrompt.length / 3.8);
-            const dynamicMaxTokens = Math.max(1500, maxAllowedTotalTokens - estimatedInputTokens - 300);
-            const finalMaxTokens = Math.min(reserveOutput, dynamicMaxTokens);
-            console.log(`[AIReport] Calling model: ${model} | prompt: ${modelPrompt.length.toLocaleString()} chars (~${estimatedInputTokens} tokens) | max_tokens: ${finalMaxTokens}`);
-            const completion = await getGroq().chat.completions.create({
-                model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are a senior equity research analyst. Translate the complex financial data into clean, objective, structured business insights. Output ONLY a single valid JSON object. No preamble, no markdown, no conversational text.',
-                    },
-                    { role: 'user', content: modelPrompt },
-                ],
-                temperature: 0.2,
-                max_tokens: finalMaxTokens,
-            });
-            const finishReason = completion.choices[0]?.finish_reason;
-            const rawContent = completion.choices[0]?.message?.content || '';
-            console.log(`[AIReport] finish_reason=${finishReason} | response: ${rawContent.length} chars`);
-            if (finishReason === 'length') {
-                console.warn(`[AIReport] ⚠ Response truncated by token limit on ${model} — trying fallback`);
-                continue; // try next model with same prompt
-            }
-            // Strip markdown fences if model added them
-            const cleaned = rawContent
-                .replace(/^```json\s*/i, '')
-                .replace(/^```\s*/i, '')
-                .replace(/```\s*$/i, '')
-                .trim();
-            // Try direct parse
+        let attempts = 0;
+        const maxAttempts = model === PRIMARY_MODEL ? 3 : 1;
+        while (attempts < maxAttempts) {
             try {
-                const parsed = JSON.parse(cleaned);
-                console.log(`[AIReport] ✓ Parsed response from ${model}`);
-                return { parsed, raw: cleaned };
-            }
-            catch (parseErr) {
-                // Try to extract JSON object from the response (handles trailing text)
-                const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    try {
-                        const parsed = JSON.parse(jsonMatch[0]);
-                        console.log(`[AIReport] ✓ Extracted JSON from partial response (${model})`);
-                        return { parsed, raw: jsonMatch[0] };
-                    }
-                    catch (_) { /* fall through */ }
+                console.log(`[AIReport] Calling Gemini model: ${model} (attempt ${attempts + 1}/${maxAttempts}) | prompt: ${prompt.length.toLocaleString()} chars`);
+                // Route through the global rate-limiter queue
+                const response = await (0, geminiRateLimiter_1.geminiQueue)((genAI) => {
+                    const client = genAI.getGenerativeModel({
+                        model,
+                        generationConfig: {
+                            responseMimeType: 'application/json',
+                            temperature: 0.2,
+                        },
+                        systemInstruction: 'You are a senior equity research analyst. Translate the complex financial data into clean, objective, structured business insights. Output ONLY a single valid JSON object matching the requested schema. No conversational text.',
+                    });
+                    return client.generateContent({
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    });
+                });
+                const rawContent = response.response.text();
+                console.log(`[AIReport] response: ${rawContent.length} chars`);
+                // Strip markdown fences if model added them (just in case)
+                const cleaned = rawContent
+                    .replace(/^```json\s*/i, '')
+                    .replace(/^```\s*/i, '')
+                    .replace(/```\s*$/i, '')
+                    .trim();
+                try {
+                    const parsed = JSON.parse(cleaned);
+                    console.log(`[AIReport] ✓ Parsed response from ${model}`);
+                    return { parsed, raw: cleaned };
                 }
-                console.warn(`[AIReport] ✗ JSON parse failed (${model}): ${parseErr.message}`);
-                console.warn(`[AIReport] Raw response preview: ${cleaned.slice(0, 300)}`);
-                continue;
+                catch (parseErr) {
+                    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        try {
+                            const parsed = JSON.parse(jsonMatch[0]);
+                            console.log(`[AIReport] ✓ Extracted JSON from partial response (${model})`);
+                            return { parsed, raw: jsonMatch[0] };
+                        }
+                        catch (_) { /* fall through */ }
+                    }
+                    console.warn(`[AIReport] ✗ JSON parse failed (${model}): ${parseErr.message}`);
+                    break; // syntax error, don't retry same model
+                }
             }
-        }
-        catch (err) {
-            if (err.status === 429) {
-                console.warn(`[AIReport] Rate limited on ${model}, waiting 30s...`);
-                await delay(30000);
-                continue;
+            catch (err) {
+                attempts++;
+                console.error(`[AIReport] ✗ Gemini API error (${model}) (attempt ${attempts}/${maxAttempts}): msg=${err.message}`);
+                if (err.status === 429) {
+                    const waitTime = 15000 * attempts;
+                    console.warn(`[AIReport] Rate limited on ${model}, waiting ${waitTime / 1000}s...`);
+                    await delay(waitTime);
+                    if (attempts < maxAttempts) {
+                        continue; // Retry same model
+                    }
+                }
+                break; // Other error, don't retry same model
             }
-            // Log full Groq API error details
-            console.error(`[AIReport] ✗ Groq API error (${model}): status=${err.status} msg=${err.message}`);
-            if (err.error)
-                console.error(`[AIReport] Groq error body:`, JSON.stringify(err.error));
         }
     }
-    throw new Error('All Groq models failed — check logs above for root cause');
+    throw new Error('All Gemini models failed — check logs above for root cause');
+}
+// Helper function to recursively clean garbled symbols from Groq JSON outputs
+function cleanResponseData(data) {
+    if (typeof data === 'string') {
+        return data
+            .replace(/Ôé╣/g, '₹')
+            .replace(/âé╣/g, '₹')
+            .replace(/ÔÇó/g, '•')
+            .replace(/âÇó/g, '•')
+            .replace(/ÔöÇ/g, '─')
+            .replace(/âöÇ/g, '─')
+            .replace(/â\u0080\u0094/g, '—')
+            .replace(/â\u0080\u0093/g, '–')
+            .replace(/â\u0080\u0099/g, "'")
+            .replace(/â\u0080\u009c/g, '"')
+            .replace(/â\u0080\u009d/g, '"')
+            .replace(/â\u0080\u00a2/g, '•')
+            .replace(/â\u0082\u00b9/g, '₹');
+    }
+    if (Array.isArray(data)) {
+        return data.map(item => cleanResponseData(item));
+    }
+    if (data !== null && typeof data === 'object') {
+        const cleaned = {};
+        for (const key of Object.keys(data)) {
+            cleaned[key] = cleanResponseData(data[key]);
+        }
+        return cleaned;
+    }
+    return data;
 }
 async function generateAndStoreAIReport(ticker, forceRegenerate = false) {
     const symbol = ticker.toUpperCase().trim();
@@ -637,7 +713,8 @@ async function generateAndStoreAIReport(ticker, forceRegenerate = false) {
         }
     }
     // ── Gather data ──────────────────────────────────────────────────────────
-    const bundle = await gatherCompanyData(symbol);
+    const rawBundle = await gatherCompanyData(symbol);
+    const bundle = cleanResponseData(rawBundle);
     if (!bundle.stock && bundle.annualReports.length === 0) {
         const err = `No data in MongoDB for ${symbol}. Run /admin/scrape and /admin/annual-report/scrape first.`;
         await CompanyAIReport_1.CompanyAIReport.findOneAndUpdate({ ticker: symbol }, {
@@ -652,10 +729,11 @@ async function generateAndStoreAIReport(ticker, forceRegenerate = false) {
     // ── Build optimised prompt ───────────────────────────────────────────────
     const prompt = buildAnalysisPrompt(bundle);
     console.log(`[AIReport] Prompt size: ${prompt.length.toLocaleString()} chars`);
-    // ── Call Groq ─────────────────────────────────────────────────────────────
+    // ── Call Gemini ───────────────────────────────────────────────────────────
     let parsed, rawResponse;
     try {
-        ({ parsed, raw: rawResponse } = await callGroqForReport(prompt));
+        ({ parsed, raw: rawResponse } = await callGeminiForReport(prompt));
+        parsed = cleanResponseData(parsed);
     }
     catch (err) {
         await CompanyAIReport_1.CompanyAIReport.findOneAndUpdate({ ticker: symbol }, {

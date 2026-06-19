@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const apify_client_1 = require("apify-client");
 const Stock_1 = __importDefault(require("../models/Stock"));
 const pdfAnnualReport_1 = require("../services/pdfAnnualReport");
+const prisma_1 = __importDefault(require("../config/prisma"));
 const router = express_1.default.Router();
 // NEVER expose admin routes in production
 router.use((req, res, next) => {
@@ -179,5 +180,83 @@ router.post('/scrape-bulk', async (req, res) => {
 router.post('/scrape-stop', async (req, res) => {
     bulkScrapingActive = false;
     return res.status(200).json({ success: true });
+});
+// Admin Webinar CRUD Management
+router.get('/webinars', async (req, res) => {
+    try {
+        const webinars = await prisma_1.default.webinar.findMany({
+            orderBy: { startTime: 'desc' },
+            include: {
+                _count: {
+                    select: { registrations: true }
+                }
+            }
+        });
+        return res.status(200).json(webinars);
+    }
+    catch (error) {
+        console.error('[AdminWebinars] Failed to fetch webinars:', error);
+        return res.status(500).json({ error: 'Failed to retrieve webinars', details: error.message });
+    }
+});
+router.post('/webinars', async (req, res) => {
+    const { title, description, speaker, startTime, endTime, zoomLink, type } = req.body;
+    if (!title || !speaker || !startTime || !endTime || !zoomLink) {
+        return res.status(400).json({ error: 'Missing required webinar fields' });
+    }
+    try {
+        const webinar = await prisma_1.default.webinar.create({
+            data: {
+                title,
+                description: description || '',
+                speaker,
+                startTime: new Date(startTime),
+                endTime: new Date(endTime),
+                zoomLink,
+                type: type === 'PREMIUM' ? 'PREMIUM' : 'FREE'
+            }
+        });
+        return res.status(201).json({ success: true, data: webinar });
+    }
+    catch (error) {
+        console.error('[AdminWebinars] Failed to create webinar:', error);
+        return res.status(500).json({ error: 'Failed to create webinar', details: error.message });
+    }
+});
+router.put('/webinars/:id', async (req, res) => {
+    const { id } = req.params;
+    const { title, description, speaker, startTime, endTime, zoomLink, type } = req.body;
+    try {
+        const webinar = await prisma_1.default.webinar.update({
+            where: { id: id },
+            data: {
+                title,
+                description,
+                speaker,
+                startTime: startTime ? new Date(startTime) : undefined,
+                endTime: endTime ? new Date(endTime) : undefined,
+                zoomLink,
+                type
+            }
+        });
+        return res.status(200).json({ success: true, data: webinar });
+    }
+    catch (error) {
+        console.error('[AdminWebinars] Failed to update webinar:', error);
+        return res.status(500).json({ error: 'Failed to update webinar', details: error.message });
+    }
+});
+router.delete('/webinars/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma_1.default.webinar.delete({
+            where: { id: id }
+        });
+        return res.status(200).json({ success: true, message: 'Webinar deleted successfully' });
+    }
+    catch (error) {
+        console.error('[AdminWebinars] Failed to delete webinar:', error);
+        return res.status(500).json({ error: 'Failed to delete webinar', details: error.message });
+    }
 });
 exports.default = router;

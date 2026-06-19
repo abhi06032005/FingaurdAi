@@ -1,8 +1,17 @@
 "use strict";
+/**
+ * Core technical indicator calculations.
+ * All functions return properly initialized arrays aligned to input length.
+ *
+ * Warm-up policy:
+ *   - SMA: returns NaN for indices where window < period
+ *   - EMA: seeds from values[0] (acceptable bias for daily data)
+ *   - RSI: returns 50 (neutral) for warmup bars, then Wilder-smoothed values
+ *   - OBV: initializes to 0 (not volumes[0]) so slope is meaningful
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.computeSMA = computeSMA;
 exports.computeEMA = computeEMA;
-exports.computeMACD = computeMACD;
 exports.computeRSI = computeRSI;
 exports.computeBollingerBands = computeBollingerBands;
 exports.computeATR = computeATR;
@@ -12,13 +21,19 @@ exports.computeCCI = computeCCI;
 exports.computeOBV = computeOBV;
 exports.computeADX = computeADX;
 exports.computeVWAP = computeVWAP;
+exports.safeAt = safeAt;
+exports.computeMACD = computeMACD;
 function computeSMA(values, period) {
     const sma = [];
     for (let i = 0; i < values.length; i++) {
-        const start = Math.max(0, i - period + 1);
-        const window = values.slice(start, i + 1);
-        const avg = window.reduce((a, b) => a + b, 0) / window.length;
-        sma.push(avg);
+        if (i < period - 1) {
+            sma.push(NaN);
+        }
+        else {
+            const window = values.slice(i - period + 1, i + 1);
+            const avg = window.reduce((a, b) => a + b, 0) / period;
+            sma.push(avg);
+        }
     }
     return sma;
 }
@@ -27,59 +42,58 @@ function computeEMA(values, period) {
     if (values.length === 0)
         return [];
     const k = 2 / (period + 1);
-    let prevEma = values[0];
+    // Seed with SMA of first `period` values for better accuracy
+    if (values.length < period) {
+        // Not enough data — return NaN-filled array
+        return values.map(() => NaN);
+    }
+    let prevEma = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    // Fill warmup indices with NaN
+    for (let i = 0; i < period - 1; i++) {
+        ema.push(NaN);
+    }
     ema.push(prevEma);
-    for (let i = 1; i < values.length; i++) {
+    for (let i = period; i < values.length; i++) {
         const curEma = values[i] * k + prevEma * (1 - k);
         ema.push(curEma);
         prevEma = curEma;
     }
     return ema;
 }
-function computeMACD(closes, fast = 12, slow = 26, signal = 9) {
-    const fastEma = computeEMA(closes, fast);
-    const slowEma = computeEMA(closes, slow);
-    const macdLine = [];
-    for (let i = 0; i < closes.length; i++) {
-        macdLine.push(fastEma[i] - slowEma[i]);
-    }
-    const signalLine = computeEMA(macdLine, signal);
-    const histogram = [];
-    for (let i = 0; i < closes.length; i++) {
-        histogram.push(macdLine[i] - signalLine[i]);
-    }
-    return { macd: macdLine, signal: signalLine, histogram };
-}
+/**
+ * Wilder-smoothed RSI.
+ * Returns 50 (neutral) for warmup bars (idx < period).
+ * This is intentional — callers use [latestIdx] which is always past warmup.
+ */
 function computeRSI(closes, period = 14) {
     const rsi = [];
     if (closes.length === 0)
         return [];
     let avgGain = 0;
     let avgLoss = 0;
-    rsi.push(50); // initial fallback
-    for (let i = 1; i < closes.length; i++) {
+    // Fill warmup bars with NaN
+    for (let i = 0; i < period; i++) {
+        rsi.push(NaN);
+    }
+    // First RS calculation: simple average of first `period` gains/losses
+    for (let i = 1; i <= period; i++) {
+        const diff = closes[i] - closes[i - 1];
+        avgGain += diff > 0 ? diff : 0;
+        avgLoss += diff < 0 ? -diff : 0;
+    }
+    avgGain /= period;
+    avgLoss /= period;
+    const rs0 = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    rsi.push(100 - 100 / (1 + rs0));
+    // Wilder smoothing for remaining bars
+    for (let i = period + 1; i < closes.length; i++) {
         const diff = closes[i] - closes[i - 1];
         const gain = diff > 0 ? diff : 0;
         const loss = diff < 0 ? -diff : 0;
-        if (i <= period) {
-            avgGain += gain;
-            avgLoss += loss;
-            if (i === period) {
-                avgGain /= period;
-                avgLoss /= period;
-                const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-                rsi.push(100 - 100 / (1 + rs));
-            }
-            else {
-                rsi.push(50);
-            }
-        }
-        else {
-            avgGain = (avgGain * (period - 1) + gain) / period;
-            avgLoss = (avgLoss * (period - 1) + loss) / period;
-            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-            rsi.push(100 - 100 / (1 + rs));
-        }
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        rsi.push(100 - 100 / (1 + rs));
     }
     return rsi;
 }
@@ -90,13 +104,17 @@ function computeBollingerBands(closes, period = 20, stdDevMultiplier = 2) {
     const percentB = [];
     const bandwidth = [];
     for (let i = 0; i < closes.length; i++) {
-        const start = Math.max(0, i - period + 1);
-        const window = closes.slice(start, i + 1);
-        const mean = window.reduce((a, b) => a + b, 0) / window.length;
-        let variance = 0;
-        if (window.length > 1) {
-            variance = window.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / window.length;
+        if (i < period - 1) {
+            upper.push(NaN);
+            mid.push(NaN);
+            lower.push(NaN);
+            percentB.push(NaN);
+            bandwidth.push(NaN);
+            continue;
         }
+        const window = closes.slice(i - period + 1, i + 1);
+        const mean = window.reduce((a, b) => a + b, 0) / period;
+        const variance = window.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / period;
         const std = Math.sqrt(variance);
         const u = mean + stdDevMultiplier * std;
         const l = mean - stdDevMultiplier * std;
@@ -120,6 +138,7 @@ function computeATR(highs, lows, closes, period = 14) {
         const l_pc = Math.abs(lows[i] - closes[i - 1]);
         tr.push(Math.max(h_l, h_pc, l_pc));
     }
+    // Wilder smoothing for ATR
     let currentAtr = tr.slice(0, period).reduce((a, b) => a + b, 0) / Math.min(period, tr.length);
     for (let i = 0; i < closes.length; i++) {
         if (i < period - 1) {
@@ -139,7 +158,11 @@ function computeATR(highs, lows, closes, period = 14) {
 function computeStochastic(highs, lows, closes, kPeriod = 14, dPeriod = 3) {
     const k = [];
     for (let i = 0; i < closes.length; i++) {
-        const start = Math.max(0, i - kPeriod + 1);
+        if (i < kPeriod - 1) {
+            k.push(NaN);
+            continue;
+        }
+        const start = i - kPeriod + 1;
         const windowHighs = highs.slice(start, i + 1);
         const windowLows = lows.slice(start, i + 1);
         const highestHigh = Math.max(...windowHighs);
@@ -148,13 +171,17 @@ function computeStochastic(highs, lows, closes, kPeriod = 14, dPeriod = 3) {
         const val = range === 0 ? 50 : 100 * (closes[i] - lowestLow) / range;
         k.push(val);
     }
-    const d = computeSMA(k, dPeriod);
+    const d = computeSMA(k.map(v => isNaN(v) ? 0 : v), dPeriod);
     return { k, d };
 }
 function computeWilliamsR(highs, lows, closes, period = 14) {
     const wR = [];
     for (let i = 0; i < closes.length; i++) {
-        const start = Math.max(0, i - period + 1);
+        if (i < period - 1) {
+            wR.push(NaN);
+            continue;
+        }
+        const start = i - period + 1;
         const windowHighs = highs.slice(start, i + 1);
         const windowLows = lows.slice(start, i + 1);
         const highestHigh = Math.max(...windowHighs);
@@ -173,7 +200,11 @@ function computeCCI(highs, lows, closes, period = 20) {
     }
     const smaTp = computeSMA(tp, period);
     for (let i = 0; i < closes.length; i++) {
-        const start = Math.max(0, i - period + 1);
+        if (i < period - 1) {
+            cci.push(NaN);
+            continue;
+        }
+        const start = i - period + 1;
         const windowTp = tp.slice(start, i + 1);
         const meanTp = smaTp[i];
         const meanDev = windowTp.reduce((sum, v) => sum + Math.abs(v - meanTp), 0) / windowTp.length;
@@ -182,11 +213,16 @@ function computeCCI(highs, lows, closes, period = 20) {
     }
     return cci;
 }
+/**
+ * On-Balance Volume.
+ * Initialized to 0 (not volumes[0]) so the slope is the only meaningful metric.
+ * The absolute OBV level is arbitrary and should not be compared across stocks.
+ */
 function computeOBV(closes, volumes) {
     const obv = [];
     if (closes.length === 0)
         return [];
-    let currentObv = volumes[0];
+    let currentObv = 0; // Fixed: was volumes[0] which made level meaningless
     obv.push(currentObv);
     for (let i = 1; i < closes.length; i++) {
         if (closes[i] > closes[i - 1]) {
@@ -279,22 +315,63 @@ function computeVWAP(highs, lows, closes, volumes, period = 20) {
         let sumTypicalVolume = 0;
         let sumVolume = 0;
         const typicalPrices = [];
-        const windowVolumes = [];
         for (let j = start; j <= i; j++) {
             const tp = (highs[j] + lows[j] + closes[j]) / 3;
             typicalPrices.push(tp);
-            windowVolumes.push(volumes[j]);
             sumTypicalVolume += tp * volumes[j];
             sumVolume += volumes[j];
         }
         const currentVwap = sumVolume === 0 ? closes[i] : sumTypicalVolume / sumVolume;
         vwap.push(currentVwap);
         let devSum = 0;
-        for (let j = 0; j < typicalPrices.length; j++) {
-            devSum += Math.pow(typicalPrices[j] - currentVwap, 2);
+        for (const tp of typicalPrices) {
+            devSum += Math.pow(tp - currentVwap, 2);
         }
         const stdDev = Math.sqrt(devSum / typicalPrices.length);
         vwapDeviation.push(stdDev);
     }
     return { vwap, vwapDeviation };
+}
+/** Safe array accessor — returns 0 for NaN or out-of-bounds */
+function safeAt(arr, idx, fallback = 0) {
+    if (idx < 0 || idx >= arr.length)
+        return fallback;
+    const v = arr[idx];
+    return (v === undefined || isNaN(v)) ? fallback : v;
+}
+/**
+ * MACD (Moving Average Convergence/Divergence).
+ * Returns macd line, signal line, and histogram arrays aligned to the input length.
+ * Bars without enough data are filled with NaN.
+ */
+function computeMACD(closes, fastPeriod = 12, slowPeriod = 26, signalPeriod = 9) {
+    const fastEma = computeEMA(closes, fastPeriod);
+    const slowEma = computeEMA(closes, slowPeriod);
+    const macd = closes.map((_, i) => {
+        const f = fastEma[i];
+        const s = slowEma[i];
+        return (isNaN(f) || isNaN(s)) ? NaN : f - s;
+    });
+    // Signal line: EMA of MACD values (using only valid MACD bars)
+    // Build an array of valid values starting at the first non-NaN MACD
+    const signal = new Array(closes.length).fill(NaN);
+    const histogram = new Array(closes.length).fill(NaN);
+    // Find first valid MACD index
+    let firstValidIdx = closes.findIndex((_, i) => !isNaN(macd[i]));
+    if (firstValidIdx < 0)
+        return { macd, signal, histogram };
+    const validMacd = macd.slice(firstValidIdx);
+    const k = 2 / (signalPeriod + 1);
+    if (validMacd.length < signalPeriod)
+        return { macd, signal, histogram };
+    let currentSignal = validMacd.slice(0, signalPeriod).reduce((a, b) => a + b, 0) / signalPeriod;
+    signal[firstValidIdx + signalPeriod - 1] = currentSignal;
+    histogram[firstValidIdx + signalPeriod - 1] = validMacd[signalPeriod - 1] - currentSignal;
+    for (let i = signalPeriod; i < validMacd.length; i++) {
+        currentSignal = validMacd[i] * k + currentSignal * (1 - k);
+        const absIdx = firstValidIdx + i;
+        signal[absIdx] = currentSignal;
+        histogram[absIdx] = macd[absIdx] - currentSignal;
+    }
+    return { macd, signal, histogram };
 }

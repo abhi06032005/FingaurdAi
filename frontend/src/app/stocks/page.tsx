@@ -10,7 +10,7 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// ÔöÇÔöÇÔöÇ Types ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─────────────────────────────── Types ───────────────────────────────────────
 
 interface AIReport {
   ticker: string;
@@ -80,7 +80,7 @@ interface AIReport {
   disclaimer: string;
 }
 
-// ÔöÇÔöÇÔöÇ Sub-components ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ──────────────────────────── Sub-components ──────────────────────────────────
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   const pct = (value / 10) * 100;
@@ -138,7 +138,7 @@ function InfoCard({ children, className = "" }: { children: React.ReactNode; cla
   );
 }
 
-// ÔöÇÔöÇÔöÇ Main AI Report Renderer ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ───────────────────────── Main AI Report Renderer ────────────────────────────
 
 // Render helper to parse bold text **like this**
 function renderBoldText(str: string) {
@@ -190,7 +190,7 @@ function FormattedText({ text, className = "" }: { text?: string; className?: st
   );
 }
 
-// ÔöÇÔöÇÔöÇ Chart Data Parsers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─────────────────────────── Chart Data Parsers ───────────────────────────────
 
 interface FinancialDataPoint {
   year: string;
@@ -261,6 +261,7 @@ function parseQuarterlyFinancials(stockData: any) {
 
   const salesRow = quarters.find((r: any) => r.Metric === "Sales");
   const profitRow = quarters.find((r: any) => r.Metric === "Net Profit");
+  const opmRow = quarters.find((r: any) => r.Metric === "OPM %");
   if (!salesRow) return [];
 
   const periods = Object.keys(salesRow).filter(
@@ -272,10 +273,14 @@ function parseQuarterlyFinancials(stockData: any) {
   return last6Periods.map((p) => {
     const sVal = parseFloat(String(salesRow[p] ?? 0).replace(/,/g, ""));
     const pVal = profitRow ? parseFloat(String(profitRow[p] ?? 0).replace(/,/g, "")) : 0;
+    const oVal = opmRow && opmRow[p] !== undefined && opmRow[p] !== null
+      ? parseFloat(String(opmRow[p]).replace(/%/g, "").replace(/,/g, ""))
+      : null;
     return {
       quarter: p,
       sales: isNaN(sVal) ? 0 : sVal,
       profit: isNaN(pVal) ? 0 : pVal,
+      opm: oVal !== null && !isNaN(oVal) ? oVal : null,
     };
   });
 }
@@ -305,7 +310,7 @@ function parseCompoundedRates(stockData: any) {
   };
 }
 
-// ÔöÇÔöÇÔöÇ SVG Math Helper ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ──────────────────────────── SVG Math Helper ─────────────────────────────────
 
 function getDonutSlicePath(
   cx: number, cy: number,
@@ -336,7 +341,7 @@ function getDonutSlicePath(
   ].join(" ");
 }
 
-// ÔöÇÔöÇÔöÇ Interactive SVG Chart Components ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ───────────────────── Interactive SVG Chart Components ───────────────────────
 
 function InteractiveFinancialChart({ stockData }: { stockData: any }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -364,9 +369,9 @@ function InteractiveFinancialChart({ stockData }: { stockData: any }) {
   });
 
   function formatCr(val: number) {
-    if (val >= 100000) return `Ôé╣${(val / 100000).toFixed(1)}L Cr`;
-    if (val >= 1000) return `Ôé╣${(val / 1000).toFixed(1)}k Cr`;
-    return `Ôé╣${val.toFixed(0)} Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L Cr`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k Cr`;
+    return `₹${val.toFixed(0)} Cr`;
   }
 
   return (
@@ -734,8 +739,8 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
   const profitPath = profitPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
 
   const formatCr = (val: number) => {
-    if (val >= 1000) return `Ôé╣${(val / 1000).toFixed(1)}k Cr`;
-    return `Ôé╣${val.toFixed(0)} Cr`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k Cr`;
+    return `₹${val.toFixed(0)} Cr`;
   };
 
   return (
@@ -887,7 +892,7 @@ function QuarterlyTrendChart({ stockData }: { stockData: any }) {
               <div className="flex justify-between gap-4 border-t border-border pt-0.5 text-[10px]">
                 <span className="text-muted-foreground font-semibold">OPM %:</span>
                 <span className="text-primary font-bold">
-                  {((data[hoveredIdx].profit / data[hoveredIdx].sales) * 100).toFixed(1)}%
+                  {data[hoveredIdx].opm !== null ? `${data[hoveredIdx].opm.toFixed(1)}%` : "N/A"}
                 </span>
               </div>
             </div>
@@ -1238,7 +1243,7 @@ function AIReportPanel({ report, stockData }: { report: AIReport; stockData: any
 }
 
 
-// ÔöÇÔöÇÔöÇ Main Page ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ────────────────────────────── Main Page ─────────────────────────────────────
 
 type ViewState = "idle" | "loading" | "report" | "not-found" | "error";
 

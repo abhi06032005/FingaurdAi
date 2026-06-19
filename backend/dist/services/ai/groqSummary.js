@@ -4,9 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEducationalSummary = getEducationalSummary;
-const pdfAnnualReport_1 = require("../pdfAnnualReport");
+const generative_ai_1 = require("@google/generative-ai");
 const AiReport_1 = __importDefault(require("../../models/AiReport"));
 const logger_1 = require("../../utils/logger");
+const geminiRateLimiter_1 = require("../../utils/geminiRateLimiter");
+function getGemini() {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey)
+        throw new Error('GEMINI_API_KEY is not set in environment variables');
+    return new generative_ai_1.GoogleGenerativeAI(apiKey);
+}
 const SYSTEM_PROMPT = `You are an educational assistant on an Indian stock market analysis platform.
 Your sole purpose is to explain technical indicators to learners.
 
@@ -25,7 +32,7 @@ Structure your response in exactly these four sections with these headings:
 Keep the total response under 250 words. Use plain English. Explain any technical terms used. End with exactly this sentence:
 "This analysis is purely educational and does not constitute financial advice."`;
 /**
- * Generates an educational technical summary using Groq and caches it in MongoDB.
+ * Generates an educational technical summary using Gemini and caches it in MongoDB.
  */
 async function getEducationalSummary({ symbol, candleDate, currentPrice, indicators }) {
     const dateOnly = new Date(candleDate.toISOString().split('T')[0]);
@@ -36,16 +43,16 @@ async function getEducationalSummary({ symbol, candleDate, currentPrice, indicat
             cachedReport = await AiReport_1.default.findOne({ symbol, candleDate: dateOnly });
         }
         catch (mongoError) {
-            logger_1.logger.warn(`MongoDB check failed in getEducationalSummary for ${symbol}, proceeding with Groq call directly:`, mongoError);
+            logger_1.logger.warn(`MongoDB check failed in getEducationalSummary for ${symbol}, proceeding with Gemini call directly:`, mongoError);
         }
         if (cachedReport) {
-            logger_1.logger.info(`Groq summary cache hit for ${symbol} on ${dateOnly.toISOString().split('T')[0]}`);
+            logger_1.logger.info(`Gemini summary cache hit for ${symbol} on ${dateOnly.toISOString().split('T')[0]}`);
             return {
                 summary: cachedReport.summary,
                 generatedAt: cachedReport.generatedAt
             };
         }
-        logger_1.logger.info(`Groq summary cache miss for ${symbol} on ${dateOnly.toISOString().split('T')[0]}. Requesting from Groq...`);
+        logger_1.logger.info(`Gemini summary cache miss for ${symbol} on ${dateOnly.toISOString().split('T')[0]}. Requesting from Gemini...`);
         const rsi = indicators.momentum.rsi?.value ?? 'N/A';
         const macdVal = indicators.momentum.macd?.macd ?? 'N/A';
         const macdSignal = indicators.momentum.macd?.signal ?? 'N/A';
@@ -81,18 +88,22 @@ OBV Slope: ${obvSlope}
 Current Price: ${currentPrice}
 
 Please provide an educational technical summary.`;
-        const response = await pdfAnnualReport_1.groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: userPrompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.3,
-            max_tokens: 400
+        const genAI = getGemini();
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-2.0-flash',
+            systemInstruction: SYSTEM_PROMPT,
         });
-        const summaryText = response.choices[0]?.message?.content?.trim();
+        // Route through the global rate-limiter queue
+        const response = await (0, geminiRateLimiter_1.geminiQueue)(() => model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 400,
+            }
+        }));
+        const summaryText = response.response.text()?.trim();
         if (!summaryText) {
-            throw new Error('Empty response from Groq');
+            throw new Error('Empty response from Gemini');
         }
         const generatedAt = new Date();
         // 2. Try to cache in MongoDB (wrapped in try-catch so we don't crash if MongoDB is down)
@@ -113,13 +124,13 @@ Please provide an educational technical summary.`;
                     obvSlope
                 },
                 generatedAt,
-                modelUsed: 'llama-3.3-70b-versatile'
+                modelUsed: 'gemini-2.0-flash'
             });
         }
         catch (mongoError) {
             logger_1.logger.warn(`Failed to write AI report to MongoDB for ${symbol}, proceeding anyway:`, mongoError);
         }
-        logger_1.logger.info(`Successfully generated Groq summary for ${symbol}`);
+        logger_1.logger.info(`Successfully generated Gemini summary for ${symbol}`);
         return {
             summary: summaryText,
             generatedAt

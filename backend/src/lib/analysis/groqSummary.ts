@@ -1,5 +1,12 @@
-import { groq } from '../../services/pdfAnnualReport';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { logger } from '../../utils/logger';
+import { geminiQueue } from '../../utils/geminiRateLimiter';
+
+function getGemini(): GoogleGenerativeAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables');
+  return new GoogleGenerativeAI(apiKey);
+}
 
 export interface GroqSummaryInput {
   ticker: string;
@@ -78,19 +85,23 @@ Most significant contributor: ${input.largestContributor}
 
 Write a 130–150 word plain-language market context summary following the system instructions exactly.`;
 
-    logger.info(`Sending narrative summary prompt to Groq for ${input.ticker}`);
+    logger.info(`Sending narrative summary prompt to Gemini for ${input.ticker}`);
 
-    const response = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
-      ],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.25,
-      max_tokens: 300
+    const response = await geminiQueue((genAI) => {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: SYSTEM_PROMPT,
+      });
+      return model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens: 300,
+        }
+      });
     });
 
-    let summaryText = response.choices[0]?.message?.content?.trim() || '';
+    let summaryText = response.response.text()?.trim() || '';
 
     // Safety sanitization: replace any forbidden words
     const replacements: Record<string, string> = {

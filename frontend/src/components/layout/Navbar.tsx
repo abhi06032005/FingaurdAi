@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Show, UserButton, useUser } from '@clerk/nextjs';
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ShieldCheck, Menu, X, Sparkles } from "lucide-react";
+import { ShieldCheck, Menu, X, Sparkles, ScanSearch, Pencil } from "lucide-react";
 
 import { useUserDb } from "@/context/UserContext";
 
@@ -18,6 +18,12 @@ const navItems = [
   { href: "/learn", label: "Learn" },
   { href: "/events", label: "Events" },
   { href: "/dashboard", label: "Dashboard" },
+];
+
+// Tool links get special highlighted treatment in the navbar
+const toolItems = [
+  { href: "/screener", label: "AI Screener", icon: ScanSearch },
+  { href: "/pattern-search", label: "Draw Pattern", icon: Pencil },
 ];
 
 export function Navbar() {
@@ -64,11 +70,38 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+                className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors hover:bg-background/70 hover:text-foreground ${
+                  pathname === item.href
+                    ? 'bg-background/70 text-foreground'
+                    : 'text-muted-foreground'
+                }`}
               >
                 {item.label}
               </Link>
             ))}
+
+            {/* Divider */}
+            <div className="mx-1 h-4 w-px bg-border/70" />
+
+            {/* Tool Links */}
+            {toolItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-primary/8 text-primary/80 hover:bg-primary/15 hover:text-primary'
+                  }`}
+                >
+                  <Icon size={11} />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -109,11 +142,41 @@ export function Navbar() {
               key={item.href}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="rounded-lg px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+                pathname === item.href
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
             >
               {item.label}
             </Link>
           ))}
+
+          {/* Tool Links — mobile */}
+          <div className="mt-2 pt-2 border-t border-border/60 flex flex-col gap-1">
+            <p className="px-4 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Tools
+            </p>
+            {toolItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-primary/80 hover:bg-primary/10 hover:text-primary'
+                  }`}
+                >
+                  <Icon size={15} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -4,17 +4,18 @@ import helmet from 'helmet';
 import mongoose from 'mongoose';
 import { errorHandler } from './middlewares/errorHandler';
 import webhookRoutes from './routes/webhooks';
-import adminRoutes from './routes/admin';
 import tradeRoutes from './routes/trades';
 import aiReportRoutes from './routes/aiReports';
 import stocksRoutes from './routes/stocksRoutes';
 import userRoutes from './routes/users';
 import paymentRoutes from './routes/payments';
-import { initCronJobs } from './services/cronService';
-import { scheduleDailyIngestionJob } from './jobs/dailyIngestionJob';
-import { scheduleWeeklyCleanupJob } from './jobs/weeklyCleanupJob';
+import webinarRoutes from './routes/webinars';
 import technicalAnalysisRouter from './routes/technicalAnalysis';
 import analysisRouter from './routes/analysis';
+import screenerRouter from './routes/screener';
+import { loadPatternCache } from './services/patternSearch/patternCacheService';
+import patternSearchRouter from './routes/patternSearch';
+import prisma from './config/prisma';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from './middlewares/authMiddleware';
 import { clerkMiddleware } from '@clerk/express';
@@ -26,16 +27,16 @@ if (process.env.MONGO_URI) {
   mongoose.connect(process.env.MONGO_URI)
     .then(() => {
       console.log('[app] Connected to MongoDB for Stock Data');
-      // Initialize background news fetch & cleanup cron tasks once database is connected
-      initCronJobs();
-      // Initialize daily ingestion and weekly database maintenance crons
-      scheduleDailyIngestionJob();
-      scheduleWeeklyCleanupJob();
     })
     .catch(err => console.error('[app] MongoDB connection error:', err));
 } else {
   console.warn('[app] MONGO_URI not found in environment variables. Stock DB will not connect.');
 }
+
+// Load pattern vectors into memory (non-blocking — fires in background)
+loadPatternCache().catch((err: any) =>
+  console.warn('[app] Pattern cache load failed (vectors may not be computed yet):', err?.message)
+);
 
 app.use(helmet());
 app.use(cors({
@@ -61,14 +62,16 @@ app.use(express.json());
 app.use(clerkMiddleware());
 
 // Mount protected routes with authenticate middleware
-app.use('/admin', adminRoutes);
 app.use('/trades', authenticate, tradeRoutes);
 app.use('/api/ai-reports', aiReportRoutes);
 app.use('/api/stocks', technicalAnalysisRouter);
 app.use('/api/analysis', analysisRouter);
 app.use('/api/stocks', stocksRoutes); // Usually public
+app.use('/api/screener', screenerRouter); // AI Stock Screener
+app.use('/api/pattern-search', patternSearchRouter); // Draw Pattern Search
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/payments', authenticate, paymentRoutes);
+app.use('/api/webinars', authenticate, webinarRoutes);
 
 
 // Global Error Handler (MUST BE LAST)

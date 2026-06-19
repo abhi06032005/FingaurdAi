@@ -9,13 +9,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { PDFParse } from 'pdf-parse';
-import Groq from 'groq-sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import mongoose from 'mongoose';
 import * as cheerio from 'cheerio';
 import pLimit from 'p-limit';
 import winston from 'winston';
 import { AnnualReport } from '../models/AnnualReport';
 import { AnnualReportFiling } from '../models/AnnualReportFiling';
+import { geminiQueue } from '../utils/geminiRateLimiter';
 
 // ── Logger setup ──────────────────────────────────────────────────────────────
 const logger = winston.createLogger({
@@ -32,10 +33,7 @@ const logger = winston.createLogger({
 
 // ── Config ────────────────────────────────────────────────────────────────────
 interface AppConfig {
-    groqApiKey: string;
     mongoUri: string;
-    groqModel: string;
-    groqFallbackModel: string;
     maxTokensPerSection: number;
     concurrency: number;
     pdfChunkSize: number;
@@ -46,14 +44,11 @@ interface AppConfig {
 }
 
 const CONFIG: AppConfig = {
-    groqApiKey: process.env.GROQ_API_KEY || "",
     mongoUri: process.env.MONGO_URI || process.env.MONGODB_URI || "mongodb://localhost:27017/equity_research",
-    groqModel: "llama-3.3-70b-versatile",       // Free tier, best quality
-    groqFallbackModel: "llama-3.1-8b-instant",  // Fallback if rate-limited
-    maxTokensPerSection: 8000,   // Groq context sent per section (keeps costs low)
-    concurrency: 2,              // Parallel Groq calls (respect free-tier rate limits)
-    pdfChunkSize: 12000,         // Characters per chunk when splitting PDF text
-    requestDelayMs: 1200,        // Delay between Groq API calls (free tier: ~30 req/min)
+    maxTokensPerSection: 30000,   // Increased for Gemini
+    concurrency: 1,              // Sequential calls to prevent rate limits
+    pdfChunkSize: 50000,         // Characters per chunk
+    requestDelayMs: 30000,        // 30-second delay between calls — caps scraper at 2 RPM, well under the 15 RPM Gemini free-tier limit
 
     // BSE filing search endpoint (public, no auth needed)
     bseFilingUrl: "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w",
@@ -64,8 +59,24 @@ const CONFIG: AppConfig = {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 
-// ── Groq client ───────────────────────────────────────────────────────────────
-export const groq = new Groq({ apiKey: CONFIG.groqApiKey });
+// ── Gemini client ─────────────────────────────────────────────────────────────
+const PRIMARY_MODEL = 'gemini-2.0-flash';
+const FALLBACK_MODEL = 'gemini-2.5-pro';
+
+function getGemini(): GoogleGenerativeAI {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables');
+    return new GoogleGenerativeAI(apiKey);
+}
+
+// Legacy groq client stub to avoid immediate build breaks in other files
+export const groq: any = {
+    chat: {
+        completions: {
+            create: () => { throw new Error("Groq is deprecated. Use Gemini instead."); }
+        }
+    }
+};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // STEP 1 — Find and download the annual report PDF
@@ -255,7 +266,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /dear\s+shareholders/i,
             /message\s+from\s+the\s+(chairman|md|ceo)/i,
         ],
-        maxChars: 6000,
+        maxChars: 25000,
     },
     {
         key: "management_discussion",
@@ -264,7 +275,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /md\s*&\s*a\b/i,
             /management['']?s?\s+discussion/i,
         ],
-        maxChars: 20000,
+        maxChars: 80000,
     },
     {
         key: "business_description",
@@ -275,7 +286,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /our\s+business/i,
             /corporate\s+overview/i,
         ],
-        maxChars: 8000,
+        maxChars: 30000,
     },
     {
         key: "risk_factors",
@@ -284,7 +295,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /risks?\s+and\s+(concern|uncertaint|challenge)/i,
             /key\s+risks/i,
         ],
-        maxChars: 10000,
+        maxChars: 40000,
     },
     {
         key: "industry_outlook",
@@ -294,7 +305,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /market\s+overview/i,
             /economic\s+review/i,
         ],
-        maxChars: 6000,
+        maxChars: 25000,
     },
     {
         key: "capex_plans",
@@ -305,7 +316,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /greenfield|brownfield/i,
             /capacity\s+expansion/i,
         ],
-        maxChars: 6000,
+        maxChars: 25000,
     },
     {
         key: "guidance",
@@ -315,7 +326,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /strategic\s+(outlook|priorities)/i,
             /way\s+forward/i,
         ],
-        maxChars: 5000,
+        maxChars: 20000,
     },
     {
         key: "operational_metrics",
@@ -325,7 +336,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /kpi\b/i,
             /business\s+performance/i,
         ],
-        maxChars: 8000,
+        maxChars: 30000,
     },
     {
         key: "corporate_actions",
@@ -336,7 +347,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /subsidiaries?\b/i,
             /divestment/i,
         ],
-        maxChars: 5000,
+        maxChars: 20000,
     },
     {
         key: "auditor_remarks",
@@ -345,7 +356,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /independent\s+auditor/i,
             /statutory\s+auditor/i,
         ],
-        maxChars: 4000,
+        maxChars: 15000,
     },
     {
         key: "esg",
@@ -356,7 +367,7 @@ const SECTION_PATTERNS: SectionDef[] = [
             /csr\b/i,
             /environmental\s+(performance|initiatives)/i,
         ],
-        maxChars: 4000,
+        maxChars: 15000,
     },
 ];
 
@@ -708,53 +719,69 @@ Return ONLY valid JSON (no markdown, no explanation):
 }`,
 };
 
-async function callGroq(prompt: string, symbol: string, sectionKey: string): Promise<any> {
-    const models = [CONFIG.groqModel, CONFIG.groqFallbackModel];
+async function callGemini(prompt: string, symbol: string, sectionKey: string): Promise<any> {
+    const models = [PRIMARY_MODEL, FALLBACK_MODEL];
 
     for (const model of models) {
-        try {
-            await delay(CONFIG.requestDelayMs);
+        let attempts = 0;
+        const maxAttempts = model === PRIMARY_MODEL ? 3 : 1;
 
-            const completion = await groq.chat.completions.create({
-                model,
-                messages: [
-                    {
-                        role: "system",
-                        content:
-                            "You are a financial data extraction AI. Always respond with valid JSON only. No markdown fences, no explanation, no preamble. Just the JSON object.",
-                    },
-                    { role: "user", content: prompt },
-                ],
-                temperature: 0.1,
-                max_tokens: 2000,
-            });
+        while (attempts < maxAttempts) {
+            try {
+                await delay(CONFIG.requestDelayMs);
 
-            const raw = completion.choices[0]?.message?.content || "";
+                const response = await geminiQueue((genAI) => {
+                    const client = genAI.getGenerativeModel({
+                        model,
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            temperature: 0.15,
+                        },
+                        systemInstruction: "You are a financial data extraction AI. Always respond with valid JSON only. No markdown fences, no explanation, no preamble. Just the JSON object matching the requested schema.",
+                    });
+                    return client.generateContent({
+                        contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    });
+                });
 
-            const cleaned = raw
-                .replace(/^```json\s*/i, "")
-                .replace(/^```\s*/i, "")
-                .replace(/```\s*$/i, "")
-                .trim();
+                const raw = response.response.text() || "";
 
-            const parsed = JSON.parse(cleaned);
-            logger.info(`  ✓ Extracted [${sectionKey}] via ${model}`);
-            return parsed;
-        } catch (err: any) {
-            if (err.status === 429) {
-                logger.warn(`  Rate limited on ${model}, waiting 30s...`);
-                await delay(30000);
-                continue;
+                const cleaned = raw
+                    .replace(/^```json\s*/i, "")
+                    .replace(/^```\s*/i, "")
+                    .replace(/```\s*$/i, "")
+                    .trim();
+
+                const parsed = JSON.parse(cleaned);
+                logger.info(`  ✓ Extracted [${sectionKey}] via ${model}`);
+                return parsed;
+            } catch (err: any) {
+                attempts++;
+                const isRateLimit = err.status === 429 || 
+                    (err.message && err.message.toLowerCase().includes('quota')) ||
+                    (err.message && err.message.toLowerCase().includes('rate limit')) ||
+                    (err.message && err.message.toLowerCase().includes('resource_exhausted')) ||
+                    (err.message && err.message.toLowerCase().includes('exhausted'));
+
+                if (isRateLimit) {
+                    const waitTime = 15000 * attempts;
+                    logger.warn(`  Rate limited on ${model} (attempt ${attempts}/${maxAttempts}), waiting ${waitTime / 1000}s...`);
+                    await delay(waitTime);
+                    if (attempts < maxAttempts) {
+                        continue;
+                    }
+                }
+                if (err instanceof SyntaxError) {
+                    logger.warn(`  [${sectionKey}] JSON parse failed with ${model}: ${err.message}`);
+                    break;
+                }
+                logger.warn(`  [${sectionKey}] Gemini error (${model}): ${err.message}`);
+                break;
             }
-            if (err instanceof SyntaxError) {
-                logger.warn(`  [${sectionKey}] JSON parse failed with ${model}: ${err.message}`);
-                continue;
-            }
-            logger.warn(`  [${sectionKey}] Groq error (${model}): ${err.message}`);
         }
     }
 
-    logger.error(`  [${sectionKey}] All models failed for ${symbol}`);
+    logger.error(`  [${sectionKey}] All Gemini models failed for ${symbol}`);
     return null;
 }
 
@@ -908,7 +935,7 @@ export async function processCompany(symbol: string, isin?: string, options: Com
         .map(([key, promptFn]) =>
             limit(async () => {
                 const prompt = promptFn(sections[key]);
-                let result = await callGroq(prompt, symbol, key);
+                let result = await callGemini(prompt, symbol, key);
                 if (result) {
                     result = sanitizeExtractedData(result);
                     Object.assign(allExtracted, result);
@@ -926,7 +953,7 @@ export async function processCompany(symbol: string, isin?: string, options: Com
         allExtracted.business_description?.company_name || symbol;
 
     const synthesisPrompt = EXTRACTION_PROMPTS.synthesis(companyName, allExtracted);
-    const synthesis = await callGroq(synthesisPrompt, symbol, "synthesis");
+    const synthesis = await callGemini(synthesisPrompt, symbol, "synthesis");
 
     if (synthesis) {
         const sanitizedSynthesis = sanitizeExtractedData(synthesis);
@@ -1048,8 +1075,8 @@ function parseArgs(): ParsedArgs {
 async function main() {
     const opts = parseArgs();
 
-    if (!CONFIG.groqApiKey) {
-        logger.error("GROQ_API_KEY env variable is not set. Get one free at https://console.groq.com");
+    if (!process.env.GEMINI_API_KEY) {
+        logger.error("GEMINI_API_KEY env variable is not set.");
         process.exit(1);
     }
 

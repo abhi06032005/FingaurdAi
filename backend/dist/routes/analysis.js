@@ -52,11 +52,11 @@ router.get('/:ticker', async (req, res, next) => {
             logger_1.logger.info(`Served technical analysis for ${symbol} from memory cache as of ${latestDateStr}`);
             return res.status(200).json(analysisCache[symbol].data);
         }
-        // 3. Cache Miss -> Fetch last 150 daily candles
+        // 3. Cache Miss -> Fetch last 300 daily candles (300 needed for valid SMA-200)
         const candles = await prisma_1.default.candle.findMany({
             where: { symbol },
             orderBy: { date: 'desc' },
-            take: 150
+            take: 300
         });
         if (candles.length === 0) {
             return res.status(404).json({
@@ -84,10 +84,10 @@ router.get('/:ticker', async (req, res, next) => {
                 volume: Number(c.volume)
             });
         }
-        // Trim each symbol's candles to keep at most the last 150
+        // Trim each symbol's candles to keep at most the last 300
         for (const sym of Object.keys(allGroupedCandles)) {
-            if (allGroupedCandles[sym].length > 150) {
-                allGroupedCandles[sym] = allGroupedCandles[sym].slice(allGroupedCandles[sym].length - 150);
+            if (allGroupedCandles[sym].length > 300) {
+                allGroupedCandles[sym] = allGroupedCandles[sym].slice(allGroupedCandles[sym].length - 300);
             }
         }
         // Reverse to chronological order (oldest to newest)
@@ -175,12 +175,16 @@ router.get('/:ticker', async (req, res, next) => {
         const largestConfContributor = Object.entries(upgraded.indicatorAttribution)
             .map(([k, v]) => ({ name: k, val: v }))
             .sort((a, b) => Math.abs(b.val) - Math.abs(a.val))[0]?.name || 'trend';
+        // Compute OBV slope for AI context
+        const obvArr = obv;
+        const obvSlope = obvArr[latestIdx] > (obvArr[Math.max(0, latestIdx - 5)] || 0) ? 'rising' : 'falling';
+        const vwapDistPct = vwapData.vwap[latestIdx] ? ((currentPrice - vwapData.vwap[latestIdx]) / vwapData.vwap[latestIdx]) * 100 : 0;
         const aiSummaryInput = {
             ticker: symbol,
-            rsi: rsi[latestIdx] || 50,
+            rsi: isNaN(rsi[latestIdx]) ? 50 : rsi[latestIdx],
             macdHistogram: macdData.histogram[latestIdx] || 0,
             prevMacdHistogram: prevMacdHist,
-            pricePercentB: bb.percentB[latestIdx] || 0.5,
+            pricePercentB: isNaN(bb.percentB[latestIdx]) ? 0.5 : bb.percentB[latestIdx],
             adx: adxData.adx[latestIdx] || 0,
             hurstExponent,
             efficiencyRatio,
@@ -193,7 +197,14 @@ router.get('/:ticker', async (req, res, next) => {
             largestContributor: largestConfContributor,
             relativeStrength5d: upgraded.relativeStrength.performance[5],
             relativeStrength20d: upgraded.relativeStrength.performance[20],
-            confidenceScore: upgraded.confidenceScore.score
+            confidenceScore: upgraded.confidenceScore.score,
+            // New narrative context fields
+            volumeRatio,
+            vwapDistancePct: vwapDistPct,
+            obvSlope,
+            dRsi: upgraded.dailyDelta.deltas.rsi,
+            dVol: upgraded.dailyDelta.deltas.volatility,
+            dVolumeRatio: upgraded.dailyDelta.deltas.volumeRatio
         };
         const aiSummary = await (0, groqSummary_1.generateGroqSummary)(aiSummaryInput);
         // Build the final response JSON
@@ -224,23 +235,20 @@ router.get('/:ticker', async (req, res, next) => {
                     signal: macdData.signal[latestIdx] || 0,
                     histogram: macdData.histogram[latestIdx] || 0
                 },
-                rsi: rsi[latestIdx] || 50,
+                rsi: isNaN(rsi[latestIdx]) ? 50 : rsi[latestIdx],
                 bb: {
-                    upper: bb.upper[latestIdx] || currentPrice,
-                    mid: bb.mid[latestIdx] || currentPrice,
-                    lower: bb.lower[latestIdx] || currentPrice,
-                    percentB: bb.percentB[latestIdx] || 0.5,
-                    bandwidth: bb.bandwidth[latestIdx] || 0
+                    upper: isNaN(bb.upper[latestIdx]) ? currentPrice : bb.upper[latestIdx],
+                    mid: isNaN(bb.mid[latestIdx]) ? currentPrice : bb.mid[latestIdx],
+                    lower: isNaN(bb.lower[latestIdx]) ? currentPrice : bb.lower[latestIdx],
+                    percentB: isNaN(bb.percentB[latestIdx]) ? 0.5 : bb.percentB[latestIdx],
+                    bandwidth: isNaN(bb.bandwidth[latestIdx]) ? 0 : bb.bandwidth[latestIdx]
                 },
                 atr: atr[latestIdx] || 0,
-                stochastic: {
-                    k: stochastic.k[latestIdx] || 50,
-                    d: stochastic.d[latestIdx] || 50
-                },
-                williamsR: williamsR[latestIdx] || -50,
-                cci: cci[latestIdx] || 0,
                 obv: obv[latestIdx] || 0,
+                obvSlope: obvArr[latestIdx] > (obvArr[Math.max(0, latestIdx - 5)] || 0) ? 'rising' : 'falling',
                 volumeRatio,
+                vwap: vwapData.vwap[latestIdx] || currentPrice,
+                vwapDistancePct: vwapDistPct,
                 adx: {
                     adx: adxData.adx[latestIdx] || 0,
                     plusDI: adxData.plusDI[latestIdx] || 0,
@@ -290,7 +298,7 @@ router.get('/:ticker', async (req, res, next) => {
                 volume: confluenceScore.volume,
                 composite: upgraded.compositeConfluence
             },
-            // Layer 1-7 Advanced intelligence variables
+            // Advanced intelligence layers
             historicalAnalogs: upgraded.historicalAnalogs,
             indicatorAttribution: upgraded.indicatorAttribution,
             regimeDetection: upgraded.regimeDetection,
@@ -298,6 +306,10 @@ router.get('/:ticker', async (req, res, next) => {
             confidenceScore: upgraded.confidenceScore,
             relativeStrength: upgraded.relativeStrength,
             marketDNA: upgraded.marketDNA,
+            modelAgreement: upgraded.modelAgreement,
+            modelReliability: upgraded.modelReliability,
+            priceBehaviour: upgraded.priceBehaviour,
+            volumeBehaviour: upgraded.volumeBehaviour,
             aiSummary
         };
         // Cache results

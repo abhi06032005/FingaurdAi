@@ -1,59 +1,20 @@
 import express, { Request, Response } from 'express';
-import { generateAndStoreAIReport } from '../services/aiReportService';
 import { CompanyAIReport } from '../models/CompanyAIReport';
 import Stock from '../models/Stock';
 import { authenticate } from '../middlewares/authMiddleware';
-import { groq } from '../services/pdfAnnualReport';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { geminiQueue } from '../utils/geminiRateLimiter';
+
+function getGemini(): GoogleGenerativeAI {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set in environment variables');
+    return new GoogleGenerativeAI(apiKey);
+}
 
 const router = express.Router();
 
 /**
- * POST /api/ai-reports/generate
- * Body: { ticker: "RELIANCE", force?: true }
- *
- * Triggers AI report generation for a company using:
- * - MongoDB stocks collection (screener data: P&L, balance sheet, ratios, quarters)
- * - MongoDB annual_reports collection (PDF-extracted structured insights)
- *
- * Stores the result in company_ai_reports collection.
- * Responds immediately with 202 and runs generation in background.
- */
-router.post('/generate', authenticate, async (req: Request, res: Response): Promise<any> => {
-    const { ticker, force } = req.body;
-
-    if (!ticker || typeof ticker !== 'string') {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing or invalid "ticker" in request body. Example: { "ticker": "RELIANCE" }',
-        });
-    }
-
-    const symbol = ticker.toUpperCase().trim();
-    const forceRegenerate = !!force;
-
-    console.log(`[AIReport Route] POST /generate — ticker: ${symbol}, force: ${forceRegenerate}`);
-
-    // Respond immediately to avoid HTTP timeouts (generation can take 30-60s)
-    res.status(202).json({
-        success: true,
-        message: `AI report generation started for ${symbol}. Check GET /api/ai-reports/${symbol} once complete.`,
-        ticker: symbol,
-    });
-
-    // Run in background
-    (async () => {
-        try {
-            const result = await generateAndStoreAIReport(symbol, forceRegenerate);
-            if (result.success) {
-                console.log(`[AIReport Route] ✓ Report generated for ${symbol} (ID: ${result.reportId})`);
-            } else {
-                console.error(`[AIReport Route] ✗ Report generation failed for ${symbol}: ${result.error}`);
-            }
-        } catch (err: any) {
-            console.error(`[AIReport Route] ✗ Unhandled error for ${symbol}:`, err.message);
-        }
-    })();
-});
+// Generation is handled solely by the admin panel dashboard.
 
 /**
  * GET /api/ai-reports/:ticker
@@ -153,6 +114,49 @@ router.delete('/:ticker', authenticate, async (req: Request, res: Response): Pro
     }
 });
 
+
+/**
+ * POST /api/ai-reports/generate
+ *
+ * Trigger generation of the AI report for a company by delegating to the Admin service.
+ */
+router.post('/generate', async (req: Request, res: Response): Promise<any> => {
+    const { ticker } = req.body;
+
+    if (!ticker || typeof ticker !== 'string') {
+        return res.status(400).json({
+            success: false,
+            error: 'Missing or invalid "ticker" in request body.',
+        });
+    }
+
+    const symbol = ticker.toUpperCase().trim();
+    const adminUrl = process.env.ADMIN_SERVICE_URL || 'http://localhost:5001';
+
+    try {
+        console.log(`[AIReport Route] Proxying generation request for ${symbol} to Admin backend...`);
+        const response = await fetch(`${adminUrl}/internal/generate-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: symbol, force: true }),
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            return res.status(response.status).json({
+                success: false,
+                error: errData.error || `Admin service responded with status ${response.status}`,
+            });
+        }
+
+        const data = await response.json();
+        return res.status(response.status).json(data);
+    } catch (err: any) {
+        console.error(`[AIReport Route] POST /generate proxy error:`, err.message);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 /**
  * POST /api/ai-reports/chat
  *
@@ -168,56 +172,62 @@ router.post('/chat', async (req: Request, res: Response): Promise<any> => {
             });
         }
 
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            max_tokens: 300,
-            temperature: 0.85,
-            messages: [
-                {
-                    role: "system",
-                    content: `You are TradeSpace Guide — an empathetic
-                    companion for Indian retail traders who are
-                    processing losses and trading stress. Your
-                    personality: warm, calm, honest, like a senior
-                    trader friend who has seen losses himself and
-                    genuinely cares.
+        const formattedMessages = messages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content || m.text || '' }]
+        }));
 
-                    Rules:
-                    1. Always respond in the same language mix the
-                       user used. If they write Hinglish, reply
-                       Hinglish. If Hindi, reply Hindi. If English,
-                       reply English.
-                    2. Never use corporate language or generic
-                       motivational quotes. No robotic phrases like
-                       "I understand your feelings."
-                    3. First message in a conversation: acknowledge
-                       their emotion genuinely in 1-2 lines before
-                       anything else.
-                    4. Ask one specific follow-up question about
-                       their trade or situation — show you are
-                       actually listening.
-                    5. Keep responses under 100 words. Short and
-                       warm beats long and clinical.
-                    6. If user mentions large losses above ₹50,000
-                       or sounds severely distressed: gently mention
-                       the free Thursday 7pm community session once,
-                       naturally, not as a sales pitch.
-                    7. Never give specific buy/sell advice. You are
-                       emotional support not a SEBI advisor.
-                    8. Occasionally reference real market context
-                       naturally — "BankNifty had a rough week for
-                       everyone" type of acknowledgment.
-                    9. End responses with warmth, never with a
-                       disclaimer.
-                    10. If user seems to be in genuine crisis beyond
-                        trading stress — mention iCall helpline
-                        9152987821 gently and naturally.`
-                },
-                ...messages
-            ]
+        const response = await geminiQueue((genAI) => {
+            const model = genAI.getGenerativeModel({
+                model: "gemini-2.0-flash",
+                systemInstruction: `You are TradeSpace Guide — an empathetic
+                companion for Indian retail traders who are
+                processing losses and trading stress. Your
+                personality: warm, calm, honest, like a senior
+                trader friend who has seen losses himself and
+                genuinely cares.
+
+                Rules:
+                1. Always respond in the same language mix the
+                   user used. If they write Hinglish, reply
+                   Hinglish. If Hindi, reply Hindi. If English,
+                   reply English.
+                2. Never use corporate language or generic
+                   motivational quotes. No robotic phrases like
+                   "I understand your feelings."
+                3. First message in a conversation: acknowledge
+                   their emotion genuinely in 1-2 lines before
+                   anything else.
+                4. Ask one specific follow-up question about
+                   their trade or situation — show you are
+                   actually listening.
+                5. Keep responses under 100 words. Short and
+                   warm beats long and clinical.
+                6. If user mentions large losses above ₹50,000
+                   or sounds severely distressed: gently mention
+                   the free Thursday 7pm community session once,
+                   naturally, not as a sales pitch.
+                7. Never give specific buy/sell advice. You are
+                   emotional support not a SEBI advisor.
+                8. Occasionally reference real market context
+                   naturally — "BankNifty had a rough week for
+                   everyone" type of acknowledgment.
+                9. End responses with warmth, never with a
+                   disclaimer.
+                10. If user seems to be in genuine crisis beyond
+                    trading stress — mention iCall helpline
+                    9152987821 gently and naturally.`
+            });
+            return model.generateContent({
+                contents: formattedMessages,
+                generationConfig: {
+                    maxOutputTokens: 300,
+                    temperature: 0.85,
+                }
+            });
         });
 
-        const reply = completion.choices[0].message.content;
+        const reply = response.response.text()?.trim() ?? '';
 
         return res.json({ reply });
 
